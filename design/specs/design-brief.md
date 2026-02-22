@@ -76,7 +76,7 @@ Please provide:
 
 ## Wireframe Mockups
 
-Please produce high-fidelity wireframes (or mockups) for the following 6 screens. Can be Figma exports, PNGs, or markdown layout descriptions — whatever Pixel works best with. Forge will implement from them.
+Please produce high-fidelity wireframe mockups for the following 6 screens as PNGs. Forge will implement from them.
 
 ### Screen 1 — Onboarding (3 steps)
 
@@ -221,16 +221,16 @@ Active tab: primary color. Inactive: muted gray. White background, soft top bord
 | Asset | Format | Destination |
 |---|---|---|
 | App icon | PNG 1024×1024 | `~/projects/symptom-tracker/design/assets/icons/` |
-| Splash screen | PNG or centered logo | `~/projects/symptom-tracker/design/assets/icons/` |
+| Splash screen | PNG | `~/projects/symptom-tracker/design/assets/icons/` |
 | Adaptive icon | PNG 1024×1024 | `~/projects/symptom-tracker/design/assets/icons/` |
 | Color palette | Hex values + token names | `~/projects/symptom-tracker/design/specs/palette.md` |
 | Typography | Font name + weights | `~/projects/symptom-tracker/design/specs/typography.md` |
-| Onboarding mockup | PNG or Figma export | `~/projects/symptom-tracker/design/mockups/` |
-| Home mockup (2 states) | PNG or Figma export | `~/projects/symptom-tracker/design/mockups/` |
-| Daily Log mockup | PNG or Figma export | `~/projects/symptom-tracker/design/mockups/` |
-| History mockup | PNG or Figma export | `~/projects/symptom-tracker/design/mockups/` |
-| Trends mockup | PNG or Figma export | `~/projects/symptom-tracker/design/mockups/` |
-| Settings mockup | PNG or Figma export | `~/projects/symptom-tracker/design/mockups/` |
+| Onboarding mockup | PNG | `~/projects/symptom-tracker/design/mockups/` |
+| Home mockup (2 states) | PNG | `~/projects/symptom-tracker/design/mockups/` |
+| Daily Log mockup | PNG | `~/projects/symptom-tracker/design/mockups/` |
+| History mockup | PNG | `~/projects/symptom-tracker/design/mockups/` |
+| Trends mockup | PNG | `~/projects/symptom-tracker/design/mockups/` |
+| Settings mockup | PNG | `~/projects/symptom-tracker/design/mockups/` |
 
 ---
 
