@@ -220,17 +220,17 @@ Active tab: primary color. Inactive: muted gray. White background, soft top bord
 
 | Asset | Format | Destination |
 |---|---|---|
-| App icon | PNG 1024×1024 | `design/assets/icons/` |
-| Splash screen | PNG or centered logo | `design/assets/icons/` |
-| Adaptive icon | PNG 1024×1024 | `design/assets/icons/` |
-| Color palette | Hex values + token names | `design/specs/palette.md` |
-| Typography | Font name + weights | `design/specs/typography.md` |
-| Onboarding mockup | PNG or Figma export | `design/mockups/` |
-| Home mockup (2 states) | PNG or Figma export | `design/mockups/` |
-| Daily Log mockup | PNG or Figma export | `design/mockups/` |
-| History mockup | PNG or Figma export | `design/mockups/` |
-| Trends mockup | PNG or Figma export | `design/mockups/` |
-| Settings mockup | PNG or Figma export | `design/mockups/` |
+| App icon | PNG 1024×1024 | `~/projects/symptom-tracker/design/assets/icons/` |
+| Splash screen | PNG or centered logo | `~/projects/symptom-tracker/design/assets/icons/` |
+| Adaptive icon | PNG 1024×1024 | `~/projects/symptom-tracker/design/assets/icons/` |
+| Color palette | Hex values + token names | `~/projects/symptom-tracker/design/specs/palette.md` |
+| Typography | Font name + weights | `~/projects/symptom-tracker/design/specs/typography.md` |
+| Onboarding mockup | PNG or Figma export | `~/projects/symptom-tracker/design/mockups/` |
+| Home mockup (2 states) | PNG or Figma export | `~/projects/symptom-tracker/design/mockups/` |
+| Daily Log mockup | PNG or Figma export | `~/projects/symptom-tracker/design/mockups/` |
+| History mockup | PNG or Figma export | `~/projects/symptom-tracker/design/mockups/` |
+| Trends mockup | PNG or Figma export | `~/projects/symptom-tracker/design/mockups/` |
+| Settings mockup | PNG or Figma export | `~/projects/symptom-tracker/design/mockups/` |
 
 ---
 
