@@ -8,19 +8,30 @@ import {
   TextInput,
   Alert,
   Platform,
+  Modal,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 
 import { colors, spacing, fontSize, radius } from '../theme';
-import { loadSettings, saveSettings } from '../storage';
+import { loadSettings, saveSettings, loadAllLogs } from '../storage';
 import { AppSettings, Symptom } from '../types';
+import { requestNotificationPermission, scheduleReminder, cancelReminder } from '../notifications';
+import { signIn, signUp, signOut, getUser } from '../supabase/auth';
+import { pushToCloud, pullFromCloud } from '../supabase/sync';
+import { usePremium } from '../purchases/usePremium';
+import { restorePurchases } from '../purchases';
+import UpgradePrompt from '../components/UpgradePrompt';
+import { exportPdf } from '../export/generatePdf';
+import { exportCsv } from '../export/generateCsv';
 
 // Pull app version from package.json
 import pkg from '../../package.json';
 
 const MAX_FREE_SYMPTOMS = 5;
+const MAX_PREMIUM_SYMPTOMS = 20;
 
 function parseReminderTime(time: string | null): Date {
   const d = new Date();
@@ -46,12 +57,26 @@ export default function SettingsScreen() {
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [pickerDate, setPickerDate] = useState<Date>(new Date());
 
+  // Premium
+  const { premium, loading: premiumLoading, refresh: refreshPremium } = usePremium();
+  const [exporting, setExporting] = useState(false);
+
+  // Auth state
+  const [user, setUser] = useState<{ email?: string } | null>(null);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authEmail, setAuthEmail] = useState('');
+  const [authPassword, setAuthPassword] = useState('');
+  const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
+  const [authLoading, setAuthLoading] = useState(false);
+
   useFocusEffect(
     useCallback(() => {
       (async () => {
         const s = await loadSettings();
         setSettings(s);
         setPickerDate(parseReminderTime(s.reminderTime));
+        const u = await getUser();
+        setUser(u);
       })();
     }, [])
   );
@@ -68,11 +93,14 @@ export default function SettingsScreen() {
     const name = newSymptom.trim();
     if (!name) return;
 
-    if (settings.symptoms.length >= MAX_FREE_SYMPTOMS) {
-      Alert.alert(
-        'Free limit reached',
-        `You can track up to ${MAX_FREE_SYMPTOMS} symptoms on the free plan. Premium (coming soon) removes this limit.`
-      );
+    const limit = premium ? MAX_PREMIUM_SYMPTOMS : MAX_FREE_SYMPTOMS;
+    if (settings.symptoms.length >= limit) {
+      if (!premium) {
+        Alert.alert(
+          'Free limit reached',
+          `You can track up to ${MAX_FREE_SYMPTOMS} symptoms on the free plan. Upgrade to Premium for up to ${MAX_PREMIUM_SYMPTOMS}.`
+        );
+      }
       return;
     }
 
@@ -114,19 +142,106 @@ export default function SettingsScreen() {
 
   // ── Reminder ──
 
-  function onTimeChange(_event: DateTimePickerEvent, date?: Date) {
+  async function onTimeChange(_event: DateTimePickerEvent, date?: Date) {
     if (Platform.OS === 'android') setShowTimePicker(false);
     if (!date || !settings) return;
     setPickerDate(date);
 
     const h = String(date.getHours()).padStart(2, '0');
     const m = String(date.getMinutes()).padStart(2, '0');
-    persist({ ...settings, reminderTime: `${h}:${m}` });
+    const timeStr = `${h}:${m}`;
+
+    await persist({ ...settings, reminderTime: timeStr });
+
+    const granted = await requestNotificationPermission();
+    if (granted) {
+      await scheduleReminder(timeStr);
+    }
   }
 
-  async function clearReminder() {
+  async function clearReminderTime() {
     if (!settings) return;
+    await cancelReminder();
     await persist({ ...settings, reminderTime: null });
+  }
+
+  async function handleSetTimePress() {
+    const granted = await requestNotificationPermission();
+    if (!granted) {
+      Alert.alert(
+        'Notifications disabled',
+        'To enable reminders, go to Settings \u2192 Notifications \u2192 Ebb and turn on Allow Notifications.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+    setShowTimePicker(true);
+  }
+
+  // ── Auth ──
+
+  async function handleAuth() {
+    if (!authEmail || !authPassword) return;
+    setAuthLoading(true);
+    try {
+      const u = authMode === 'signup'
+        ? await signUp(authEmail, authPassword)
+        : await signIn(authEmail, authPassword);
+
+      setUser(u);
+      await persist({ ...settings!, accountEmail: authEmail });
+      setShowAuthModal(false);
+      setAuthEmail('');
+      setAuthPassword('');
+
+      // Sync on sign in
+      const logs = await loadAllLogs();
+      await pushToCloud(settings!, logs);
+      await pullFromCloud();
+    } catch (e: unknown) {
+      Alert.alert('Error', e instanceof Error ? e.message : 'Authentication failed');
+    } finally {
+      setAuthLoading(false);
+    }
+  }
+
+  async function handleSignOut() {
+    await signOut();
+    setUser(null);
+    await persist({ ...settings!, accountEmail: null });
+  }
+
+  // ── Export ──
+
+  async function handlePdfExport() {
+    if (!settings) return;
+    setExporting(true);
+    try {
+      const logs = await loadAllLogs();
+      const to = new Date();
+      const from = new Date();
+      from.setDate(from.getDate() - 30);
+      const fromStr = from.toISOString().split('T')[0];
+      const toStr = to.toISOString().split('T')[0];
+      await exportPdf(settings, logs, fromStr, toStr);
+    } catch {
+      Alert.alert('Export failed', 'Could not generate PDF. Please try again.');
+    } finally {
+      setExporting(false);
+    }
+  }
+
+  async function handleCsvExport() {
+    if (!settings) return;
+    setExporting(true);
+    try {
+      const logs = await loadAllLogs();
+      await exportCsv(settings, logs);
+    } catch {
+      Alert.alert('Export failed', 'Could not export data. Please try again.');
+    } finally {
+      setExporting(false);
+    }
   }
 
   if (!settings) return null;
@@ -164,29 +279,29 @@ export default function SettingsScreen() {
               value={newSymptom}
               onChangeText={setNewSymptom}
               placeholder={
-                settings.symptoms.length >= MAX_FREE_SYMPTOMS
-                  ? 'Premium required for more'
-                  : 'Add a symptom…'
+                !premium && settings.symptoms.length >= MAX_FREE_SYMPTOMS
+                  ? 'Upgrade to Premium for more'
+                  : 'Add a symptom\u2026'
               }
               placeholderTextColor={colors.textMuted}
               returnKeyType="done"
               onSubmitEditing={addSymptom}
-              editable={settings.symptoms.length < MAX_FREE_SYMPTOMS}
+              editable={premium || settings.symptoms.length < MAX_FREE_SYMPTOMS}
             />
             <TouchableOpacity
               style={[
                 styles.addBtn,
-                settings.symptoms.length >= MAX_FREE_SYMPTOMS && styles.addBtnDisabled,
+                !premium && settings.symptoms.length >= MAX_FREE_SYMPTOMS && styles.addBtnDisabled,
               ]}
               onPress={addSymptom}
-              disabled={settings.symptoms.length >= MAX_FREE_SYMPTOMS}
+              disabled={!premium && settings.symptoms.length >= MAX_FREE_SYMPTOMS}
             >
               <Text style={styles.addBtnText}>Add</Text>
             </TouchableOpacity>
           </View>
 
           <Text style={styles.hint}>
-            {settings.symptoms.length}/{MAX_FREE_SYMPTOMS} symptoms (free plan)
+            {settings.symptoms.length}/{premium ? MAX_PREMIUM_SYMPTOMS : MAX_FREE_SYMPTOMS} symptoms ({premium ? 'premium' : 'free plan'})
           </Text>
         </View>
 
@@ -202,14 +317,14 @@ export default function SettingsScreen() {
             <View style={styles.reminderActions}>
               <TouchableOpacity
                 style={styles.reminderBtn}
-                onPress={() => setShowTimePicker(true)}
+                onPress={settings.reminderTime ? () => setShowTimePicker(true) : handleSetTimePress}
               >
                 <Text style={styles.reminderBtnText}>
                   {settings.reminderTime ? 'Change' : 'Set time'}
                 </Text>
               </TouchableOpacity>
               {settings.reminderTime ? (
-                <TouchableOpacity style={styles.reminderBtnSecondary} onPress={clearReminder}>
+                <TouchableOpacity style={styles.reminderBtnSecondary} onPress={clearReminderTime}>
                   <Text style={styles.reminderBtnSecondaryText}>Clear</Text>
                 </TouchableOpacity>
               ) : null}
@@ -227,17 +342,154 @@ export default function SettingsScreen() {
           )}
         </View>
 
+        {/* ── Premium ── */}
+        <Text style={styles.sectionTitle}>Premium</Text>
+        <View style={styles.card}>
+          {premiumLoading ? (
+            <ActivityIndicator color={colors.primary} />
+          ) : premium ? (
+            <>
+              <Text style={styles.premiumActive}>Premium Active</Text>
+              <Text style={styles.hint}>Unlimited symptoms, full history, PDF export</Text>
+            </>
+          ) : (
+            <UpgradePrompt onSuccess={refreshPremium} />
+          )}
+          <TouchableOpacity
+            style={styles.restoreBtn}
+            onPress={async () => {
+              const restored = await restorePurchases();
+              if (restored) {
+                refreshPremium();
+                Alert.alert('Restored!', 'Your Premium subscription has been restored.');
+              } else {
+                Alert.alert('Nothing to restore', 'No previous Premium purchase found.');
+              }
+            }}
+          >
+            <Text style={styles.restoreBtnText}>Restore purchase</Text>
+          </TouchableOpacity>
+        </View>
+
         {/* ── Account ── */}
         <Text style={styles.sectionTitle}>Account</Text>
         <View style={styles.card}>
-          <Text style={styles.accountText}>
-            {settings.accountEmail ?? 'Not signed in'}
-          </Text>
-          <Text style={styles.hint}>
-            Sign in to enable cloud backup and doctor PDF export (coming soon).
-          </Text>
-          <TouchableOpacity style={styles.signInBtn}>
-            <Text style={styles.signInBtnText}>Sign in / Create account</Text>
+          {user ? (
+            <>
+              <Text style={styles.accountText}>{user.email}</Text>
+              <Text style={styles.hint}>Your data is backed up to the cloud.</Text>
+              <TouchableOpacity style={styles.signOutBtn} onPress={handleSignOut}>
+                <Text style={styles.signOutBtnText}>Sign out</Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <>
+              <Text style={styles.hint}>Sign in to sync across devices and enable PDF export.</Text>
+              <TouchableOpacity style={styles.signInBtn} onPress={() => setShowAuthModal(true)}>
+                <Text style={styles.signInBtnText}>Sign in / Create account</Text>
+              </TouchableOpacity>
+            </>
+          )}
+        </View>
+
+        {/* Auth Modal */}
+        <Modal visible={showAuthModal} animationType="slide" transparent onRequestClose={() => setShowAuthModal(false)}>
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalCard}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>
+                  {authMode === 'signin' ? 'Sign In' : 'Create Account'}
+                </Text>
+                <TouchableOpacity onPress={() => setShowAuthModal(false)}>
+                  <Text style={styles.closeBtn}>✕</Text>
+                </TouchableOpacity>
+              </View>
+
+              <TextInput
+                style={styles.authInput}
+                value={authEmail}
+                onChangeText={setAuthEmail}
+                placeholder="Email"
+                placeholderTextColor={colors.textMuted}
+                autoCapitalize="none"
+                keyboardType="email-address"
+                textContentType="emailAddress"
+              />
+              <TextInput
+                style={styles.authInput}
+                value={authPassword}
+                onChangeText={setAuthPassword}
+                placeholder="Password"
+                placeholderTextColor={colors.textMuted}
+                secureTextEntry
+                textContentType="password"
+              />
+
+              <TouchableOpacity
+                style={[styles.authSubmitBtn, authLoading && { opacity: 0.6 }]}
+                onPress={handleAuth}
+                disabled={authLoading}
+              >
+                {authLoading ? (
+                  <ActivityIndicator color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.authSubmitBtnText}>
+                    {authMode === 'signin' ? 'Sign In' : 'Create Account'}
+                  </Text>
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.authToggle}
+                onPress={() => setAuthMode(authMode === 'signin' ? 'signup' : 'signin')}
+              >
+                <Text style={styles.authToggleText}>
+                  {authMode === 'signin'
+                    ? "Don't have an account? Sign up"
+                    : 'Already have an account? Sign in'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+
+        {/* ── Export ── */}
+        <Text style={styles.sectionTitle}>Export</Text>
+        <View style={styles.card}>
+          <TouchableOpacity
+            style={[styles.exportBtn, !premium && styles.exportBtnLocked]}
+            onPress={() => {
+              if (!premium) {
+                Alert.alert(
+                  'Premium feature',
+                  'PDF export is available with Ebb Premium. Upgrade in the Premium section above.',
+                  [{ text: 'OK' }]
+                );
+                return;
+              }
+              handlePdfExport();
+            }}
+            disabled={exporting}
+          >
+            {exporting ? (
+              <ActivityIndicator color={premium ? '#fff' : colors.primary} />
+            ) : (
+              <>
+                <Text style={[styles.exportBtnText, !premium && styles.exportBtnTextLocked]}>
+                  {premium ? 'Export PDF Report' : 'PDF Report (Premium)'}
+                </Text>
+                <Text style={styles.exportBtnSub}>For your doctor appointment</Text>
+              </>
+            )}
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.exportBtn, styles.exportBtnSecondary]}
+            onPress={handleCsvExport}
+            disabled={exporting}
+          >
+            <Text style={styles.exportBtnTextSecondary}>Export CSV</Text>
+            <Text style={styles.exportBtnSub}>All your data as a spreadsheet</Text>
           </TouchableOpacity>
         </View>
 
@@ -356,6 +608,72 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   signInBtnText: { color: colors.primary, fontWeight: '600', fontSize: fontSize.lg },
+  signOutBtn: {
+    marginTop: spacing.md,
+    borderWidth: 1.5,
+    borderColor: colors.danger,
+    borderRadius: radius.sm,
+    paddingVertical: spacing.sm,
+    alignItems: 'center',
+  },
+  signOutBtnText: { color: colors.danger, fontWeight: '600', fontSize: fontSize.lg },
+  // Auth Modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'flex-end',
+  },
+  modalCard: {
+    backgroundColor: colors.card,
+    borderTopLeftRadius: radius.lg,
+    borderTopRightRadius: radius.lg,
+    padding: spacing.lg,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.lg,
+  },
+  modalTitle: { fontSize: fontSize.xl, fontWeight: '700', color: colors.text },
+  closeBtn: { fontSize: fontSize.xl, color: colors.textMuted, padding: spacing.xs },
+  authInput: {
+    height: 48,
+    borderRadius: radius.sm,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    paddingHorizontal: spacing.md,
+    fontSize: fontSize.lg,
+    color: colors.text,
+    marginBottom: spacing.md,
+  },
+  authSubmitBtn: {
+    backgroundColor: colors.primary,
+    borderRadius: radius.sm,
+    paddingVertical: spacing.md,
+    alignItems: 'center',
+    marginTop: spacing.sm,
+  },
+  authSubmitBtnText: { color: '#FFFFFF', fontWeight: '700', fontSize: fontSize.lg },
+  authToggle: { alignItems: 'center', marginTop: spacing.md, padding: spacing.sm },
+  authToggleText: { color: colors.primary, fontSize: fontSize.md },
+  // Premium
+  premiumActive: { fontSize: fontSize.lg, fontWeight: '700', color: colors.primary, marginBottom: spacing.xs },
+  restoreBtn: { alignItems: 'center', marginTop: spacing.md, padding: spacing.sm },
+  restoreBtnText: { color: colors.textMuted, fontSize: fontSize.sm },
+  // Export
+  exportBtn: {
+    backgroundColor: colors.primary,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    marginBottom: spacing.sm,
+  },
+  exportBtnLocked: { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border },
+  exportBtnText: { color: '#fff', fontWeight: '700', fontSize: fontSize.md },
+  exportBtnTextLocked: { color: colors.textMuted },
+  exportBtnSecondary: { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border },
+  exportBtnTextSecondary: { color: colors.primary, fontWeight: '600', fontSize: fontSize.md },
+  exportBtnSub: { fontSize: fontSize.sm, color: colors.textMuted, marginTop: 2 },
   // About
   aboutRow: {
     flexDirection: 'row',

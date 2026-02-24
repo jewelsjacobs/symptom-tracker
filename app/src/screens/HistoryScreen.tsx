@@ -14,6 +14,9 @@ import { useFocusEffect } from '@react-navigation/native';
 import { colors, severity as severityColors, spacing, fontSize, radius } from '../theme';
 import { loadAllLogs, loadSettings } from '../storage';
 import { AppSettings, DailyLog, SeverityLevel } from '../types';
+import { usePremium } from '../purchases/usePremium';
+
+const HISTORY_FREE_DAYS = 30;
 
 function formatFriendlyDate(dateStr: string): string {
   const [year, month, day] = dateStr.split('-').map(Number);
@@ -42,15 +45,23 @@ export default function HistoryScreen() {
   const [logs, setLogs] = useState<DailyLog[]>([]);
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [selected, setSelected] = useState<DailyLog | null>(null);
+  const { premium } = usePremium();
 
   useFocusEffect(
     useCallback(() => {
       (async () => {
-        const [s, l] = await Promise.all([loadSettings(), loadAllLogs()]);
+        const [s, allLogs] = await Promise.all([loadSettings(), loadAllLogs()]);
         setSettings(s);
-        setLogs(l);
+
+        if (premium) {
+          setLogs(allLogs);
+        } else {
+          const cutoff = new Date();
+          cutoff.setDate(cutoff.getDate() - HISTORY_FREE_DAYS);
+          setLogs(allLogs.filter((log) => new Date(log.date) >= cutoff));
+        }
       })();
-    }, [])
+    }, [premium])
   );
 
   function getRowColor(log: DailyLog): string {
@@ -94,12 +105,14 @@ export default function HistoryScreen() {
               </TouchableOpacity>
             </View>
             <ScrollView>
-              {settings.symptoms.map((symptom) => {
-                const entry = selected.entries.find((e) => e.symptomId === symptom.id);
-                const sev = entry?.severity ?? null;
+              {selected.entries.map((entry) => {
+                const symptom = settings.symptoms.find((s) => s.id === entry.symptomId);
+                const name = symptom?.name ?? 'Unknown symptom';
                 return (
-                  <View key={symptom.id} style={styles.modalRow}>
-                    <Text style={styles.modalSymptomName}>{symptom.name}</Text>
+                  <View key={entry.symptomId} style={styles.modalRow}>
+                    <Text style={[styles.modalSymptomName, !symptom && { color: colors.textMuted, fontStyle: 'italic' }]}>
+                      {name}
+                    </Text>
                     <View style={styles.modalDotsRow}>
                       {([1, 2, 3, 4, 5] as SeverityLevel[]).map((level) => (
                         <View
@@ -108,8 +121,8 @@ export default function HistoryScreen() {
                             styles.modalDot,
                             {
                               backgroundColor:
-                                sev !== null && level <= sev
-                                  ? severityColors[sev - 1]
+                                level <= entry.severity
+                                  ? severityColors[entry.severity - 1]
                                   : colors.border,
                             },
                           ]}

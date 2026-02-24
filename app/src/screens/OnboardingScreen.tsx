@@ -18,6 +18,7 @@ import { colors, spacing, fontSize, radius } from '../theme';
 import { saveSettings, getDefaultSettings } from '../storage';
 import { Symptom } from '../types';
 import { RootStackParamList, useAppContext } from '../navigation';
+import { requestNotificationPermission, scheduleReminder } from '../notifications';
 
 type NavProp = StackNavigationProp<RootStackParamList, 'Onboarding'>;
 
@@ -99,8 +100,10 @@ export default function OnboardingScreen() {
     setStep(3);
   }
 
-  function goToStep3() {
+  async function goToStep3() {
     setReminderEnabled(true);
+    // Request permission now so user sees the prompt while still in reminder context
+    await requestNotificationPermission();
     setStep(3);
   }
 
@@ -126,6 +129,10 @@ export default function OnboardingScreen() {
     settings.hasCompletedOnboarding = true;
 
     await saveSettings(settings);
+
+    if (reminderEnabled && reminderTime) {
+      await scheduleReminder(reminderTime);
+    }
 
     // Signal RootNavigator context so it updates its initialRoute state,
     // then navigate to the Main screen in the root stack.

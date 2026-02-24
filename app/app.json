@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "app",
-    "slug": "app",
+    "name": "Ebb",
+    "slug": "ebb-symptom-tracker",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -10,10 +10,14 @@
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#F5F3FF"
     },
     "ios": {
-      "supportsTablet": true
+      "bundleIdentifier": "com.julia.ebb",
+      "supportsTablet": false,
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -27,7 +31,20 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "@react-native-community/datetimepicker"
-    ]
+      "@react-native-community/datetimepicker",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#7C5CBF"
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "e9929027-5470-48e4-8ad3-462b1bcbfacf"
+      }
+    },
+    "owner": "juliajacobs"
   }
 }
