@@ -49,6 +49,33 @@ curl -s -X POST http://localhost:3456/api/tasks/TASK_ID/comments \
 7. Skip tasks tagged "design" only — those belong to Builder
 8. Work autonomously through coding tasks without waiting for permission
 
+## Pre-Commit Workflow (REQUIRED before every git commit)
+
+Before committing any code changes, always follow this sequence:
+
+1. **Run Expo Doctor:**
+   ```bash
+   cd /Users/openclaw/projects/symptom-tracker/app && npx expo-doctor
+   ```
+
+2. **Evaluate each issue using this judgment guide:**
+   - ✅ **Auto-fix:** Outdated package versions, missing/incorrect config fields, SDK version mismatches, wrong package.json fields
+   - ✅ **Auto-fix:** Warnings about `app.json` schema, missing `bundleIdentifier`, icon/splash config issues
+   - ⚠️ **Ask before fixing:** Major SDK version upgrades (e.g. Expo 54 → 55), native module breaking changes
+   - ⚠️ **Ask before fixing:** Anything that could remove or replace a dependency
+
+3. **Apply safe fixes**, then re-run `npx expo-doctor` to confirm clean output.
+
+4. **Only commit once expo-doctor passes** (or remaining issues are explicitly flagged/accepted).
+
+5. **After committing a completed feature**, push an OTA update so it can be tested on device immediately:
+   ```bash
+   cd /Users/openclaw/projects/symptom-tracker/app && eas update --branch preview --message "brief description of what changed"
+   ```
+   This delivers the update to the Preview build on the iPhone without requiring a full rebuild.
+
+> Note: A full `eas build --profile preview --platform ios` is only needed when native code changes — new native packages, plugin changes, or `app.json` native config changes. For JS/TS/asset-only changes, always use `eas update` instead.
+
 ## Commands
 
 ```bash

@@ -46,6 +46,12 @@
         "projectId": "e9929027-5470-48e4-8ad3-462b1bcbfacf"
       }
     },
-    "owner": "juliajacobs"
+    "owner": "juliajacobs",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/e9929027-5470-48e4-8ad3-462b1bcbfacf"
+    }
   }
 }
