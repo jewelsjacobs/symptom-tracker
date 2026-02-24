@@ -38,7 +38,8 @@
           "icon": "./assets/icon.png",
           "color": "#7C5CBF"
         }
-      ]
+      ],
+      "expo-font"
     ],
     "extra": {
       "eas": {

@@ -4,34 +4,40 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  TouchableOpacity,
+  Pressable,
   TextInput,
   Alert,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 
-import { colors, severity as severityColors, spacing, fontSize, radius } from '../theme';
+import { colors, spacing, fontSize, radius } from '../theme';
 import { loadSettings, loadLog, saveLog, getTodayDateString } from '../storage';
 import { AppSettings, DailyLog, LogEntry, SeverityLevel } from '../types';
 import { HomeStackParamList } from '../navigation';
+import GlassCard from '../components/GlassCard';
+import GradientBackground from '../components/GradientBackground';
+import SymptomIcon from '../components/SymptomIcon';
+import SeverityDots from '../components/SeverityDots';
 
 type NavProp = StackNavigationProp<HomeStackParamList, 'DailyLog'>;
 
 function formatFriendlyDate(dateStr: string): string {
   const [year, month, day] = dateStr.split('-').map(Number);
   const d = new Date(year, month - 1, day);
-  return d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+  return d.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
 }
 
 export default function DailyLogScreen() {
   const navigation = useNavigation<NavProp>();
+  const insets = useSafeAreaInsets();
   const today = getTodayDateString();
 
   const [settings, setSettings] = useState<AppSettings | null>(null);
-  // Map of symptomId → selected severity
   const [severities, setSeverities] = useState<Record<string, SeverityLevel>>({});
   const [note, setNote] = useState('');
   const [isSaving, setIsSaving] = useState(false);
@@ -40,8 +46,6 @@ export default function DailyLogScreen() {
     (async () => {
       const s = await loadSettings();
       setSettings(s);
-
-      // Pre-fill with any existing log for today
       const existing = await loadLog(today);
       if (existing) {
         const map: Record<string, SeverityLevel> = {};
@@ -54,14 +58,12 @@ export default function DailyLogScreen() {
     })();
   }, [today]);
 
-  function selectSeverity(symptomId: string, level: SeverityLevel) {
-    setSeverities((prev) => ({ ...prev, [symptomId]: level }));
+  function selectSeverity(symptomId: string, level: number) {
+    setSeverities((prev) => ({ ...prev, [symptomId]: level as SeverityLevel }));
   }
 
   async function handleSave() {
     if (!settings) return;
-
-    // Validate: all symptoms must have a rating
     const unrated = settings.symptoms.filter((s) => !severities[s.id]);
     if (unrated.length > 0) {
       Alert.alert(
@@ -70,20 +72,13 @@ export default function DailyLogScreen() {
       );
       return;
     }
-
     setIsSaving(true);
     try {
       const entries: LogEntry[] = settings.symptoms.map((s) => ({
         symptomId: s.id,
         severity: severities[s.id],
       }));
-
-      const log: DailyLog = {
-        date: today,
-        entries,
-        note: note.trim() || undefined,
-      };
-
+      const log: DailyLog = { date: today, entries, note: note.trim() || undefined };
       await saveLog(log);
       navigation.goBack();
     } catch (e) {
@@ -96,228 +91,193 @@ export default function DailyLogScreen() {
 
   if (!settings) {
     return (
-      <View style={styles.loading}>
-        <ActivityIndicator color={colors.primary} />
-      </View>
+      <GradientBackground>
+        <View style={styles.loading}>
+          <ActivityIndicator color="#FFFFFF" size="large" />
+        </View>
+      </GradientBackground>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Text style={styles.backText}>← Back</Text>
-        </TouchableOpacity>
-        <View>
-          <Text style={styles.headerTitle}>Today's Log</Text>
-          <Text style={styles.headerDate}>{formatFriendlyDate(today)}</Text>
-        </View>
-      </View>
-
-      <ScrollView contentContainerStyle={styles.content}>
-        {/* Symptom cards */}
-        {settings.symptoms.map((symptom) => {
-          const selected = severities[symptom.id];
-          return (
-            <View key={symptom.id} style={styles.card}>
-              <Text style={styles.symptomName}>{symptom.name}</Text>
-              <View style={styles.dotsRow}>
-                {([1, 2, 3, 4, 5] as SeverityLevel[]).map((level) => {
-                  const isSelected = selected === level;
-                  return (
-                    <TouchableOpacity
-                      key={level}
-                      onPress={() => selectSeverity(symptom.id, level)}
-                      style={[
-                        styles.dotButton,
-                        isSelected && styles.dotButtonSelected,
-                        { borderColor: severityColors[level - 1] },
-                        isSelected && { backgroundColor: severityColors[level - 1] },
-                      ]}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={[styles.dotLabel, isSelected && styles.dotLabelSelected]}>
-                        {level}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-              <View style={styles.severityLabels}>
-                <Text style={styles.severityLabelText}>Mild</Text>
-                <Text style={styles.severityLabelText}>Severe</Text>
-              </View>
-            </View>
-          );
-        })}
-
-        {/* Note */}
-        <View style={styles.noteCard}>
-          <Text style={styles.noteLabel}>Add a note (optional)</Text>
-          <TextInput
-            style={styles.noteInput}
-            value={note}
-            onChangeText={setNote}
-            placeholder="How are you feeling overall? Any triggers today?"
-            placeholderTextColor={colors.textMuted}
-            multiline
-            numberOfLines={3}
-            textAlignVertical="top"
-          />
+    <GradientBackground>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        {/* Header */}
+        <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>
+          <Pressable onPress={() => navigation.goBack()} hitSlop={12}>
+            <Text style={styles.backText}>Back</Text>
+          </Pressable>
+          <View style={styles.headerCenter}>
+            <Text style={styles.headerTitle}>Today's Log</Text>
+            <Text style={styles.headerDate}>{formatFriendlyDate(today)}</Text>
+          </View>
+          <View style={{ width: 40 }} />
         </View>
 
-        {/* Bottom padding so save button doesn't overlap content */}
-        <View style={{ height: 80 }} />
-      </ScrollView>
-
-      {/* Sticky save button */}
-      <View style={styles.saveContainer}>
-        <TouchableOpacity
-          style={[styles.saveButton, isSaving && styles.saveButtonDisabled]}
-          onPress={handleSave}
-          disabled={isSaving}
-          activeOpacity={0.8}
+        <ScrollView
+          contentContainerStyle={[styles.content, { paddingBottom: 120 }]}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
         >
-          {isSaving ? (
-            <ActivityIndicator color="#FFFFFF" />
-          ) : (
-            <Text style={styles.saveButtonText}>Save Log ✓</Text>
-          )}
-        </TouchableOpacity>
-      </View>
-    </SafeAreaView>
+          {/* Symptom cards */}
+          {settings.symptoms.map((symptom) => (
+            <GlassCard key={symptom.id} style={styles.symptomCard}>
+              <View style={styles.cardPad}>
+                <View style={styles.symptomHeader}>
+                  <SymptomIcon name={symptom.name} size={14} color="rgba(255,255,255,0.8)" showBox />
+                  <Text style={styles.symptomName}>{symptom.name}</Text>
+                </View>
+                <SeverityDots
+                  value={severities[symptom.id] ?? null}
+                  onChange={(level) => selectSeverity(symptom.id, level)}
+                  variant="light"
+                />
+              </View>
+            </GlassCard>
+          ))}
+
+          {/* Note card */}
+          <GlassCard style={styles.symptomCard}>
+            <View style={styles.cardPad}>
+              <TextInput
+                style={styles.noteInput}
+                value={note}
+                onChangeText={(t) => setNote(t.slice(0, 500))}
+                placeholder="Add a note for today... (optional)"
+                placeholderTextColor="rgba(255,255,255,0.4)"
+                multiline
+                numberOfLines={3}
+                textAlignVertical="top"
+              />
+              <Text style={styles.charCount}>{note.length}/500</Text>
+            </View>
+          </GlassCard>
+        </ScrollView>
+
+        {/* Sticky save button */}
+        <View style={[styles.saveContainer, { paddingBottom: Math.max(insets.bottom, spacing.md) }]}>
+          <Pressable
+            style={({ pressed }) => [
+              styles.saveButton,
+              isSaving && styles.saveButtonDisabled,
+              pressed && !isSaving && styles.saveButtonPressed,
+            ]}
+            onPress={handleSave}
+            disabled={isSaving}
+          >
+            {isSaving ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <Text style={styles.saveButtonText}>Save Log</Text>
+            )}
+          </Pressable>
+          <Pressable onPress={() => navigation.goBack()} hitSlop={8}>
+            <Text style={styles.skipText}>Skip for now</Text>
+          </Pressable>
+        </View>
+      </KeyboardAvoidingView>
+    </GradientBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
   loading: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: colors.background,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: spacing.lg,
+    paddingHorizontal: spacing.lg,
     paddingBottom: spacing.md,
-    gap: spacing.md,
-    backgroundColor: colors.background,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  backButton: {
-    padding: spacing.xs,
   },
   backText: {
-    color: colors.primary,
-    fontSize: fontSize.lg,
+    fontFamily: 'DMSans_500Medium',
+    fontSize: fontSize.md,
+    color: 'rgba(255,255,255,0.8)',
+  },
+  headerCenter: {
+    flex: 1,
+    alignItems: 'center',
   },
   headerTitle: {
-    fontSize: fontSize.xl,
-    fontWeight: '700',
-    color: colors.text,
-  },
-  headerDate: {
-    fontSize: fontSize.md,
-    color: colors.textMuted,
-  },
-  content: {
-    padding: spacing.lg,
-  },
-  card: {
-    backgroundColor: colors.card,
-    borderRadius: radius.md,
-    padding: spacing.lg,
-    marginBottom: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  symptomName: {
-    fontSize: fontSize.xl,
-    fontWeight: '700',
-    color: colors.text,
-    marginBottom: spacing.md,
-  },
-  dotsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  dotButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    borderWidth: 2,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: colors.card,
-  },
-  dotButtonSelected: {
-    transform: [{ scale: 1.15 }],
-  },
-  dotLabel: {
-    fontSize: fontSize.lg,
-    fontWeight: '600',
-    color: colors.textMuted,
-  },
-  dotLabelSelected: {
+    fontFamily: 'DMSans_700Bold',
+    fontSize: fontSize.xxl,
     color: '#FFFFFF',
   },
-  severityLabels: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: spacing.xs,
+  headerDate: {
+    fontFamily: 'DMSans_400Regular',
+    fontSize: fontSize.md,
+    color: 'rgba(255,255,255,0.65)',
   },
-  severityLabelText: {
-    fontSize: fontSize.sm,
-    color: colors.textMuted,
+  content: {
+    paddingHorizontal: spacing.lg,
   },
-  noteCard: {
-    backgroundColor: colors.card,
-    borderRadius: radius.md,
+  symptomCard: {
+    marginBottom: spacing.sm + 4,
+  },
+  cardPad: {
     padding: spacing.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
   },
-  noteLabel: {
+  symptomHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  symptomName: {
+    fontFamily: 'DMSans_600SemiBold',
     fontSize: fontSize.lg,
-    fontWeight: '600',
-    color: colors.text,
-    marginBottom: spacing.sm,
+    color: '#FFFFFF',
   },
   noteInput: {
-    fontSize: fontSize.lg,
-    color: colors.text,
+    fontFamily: 'DMSans_400Regular',
+    fontSize: fontSize.md,
+    color: '#FFFFFF',
     minHeight: 80,
     paddingTop: 0,
   },
+  charCount: {
+    fontFamily: 'DMSans_400Regular',
+    fontSize: fontSize.xs,
+    color: 'rgba(255,255,255,0.4)',
+    textAlign: 'right',
+    marginTop: spacing.xs,
+  },
   saveContainer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    padding: spacing.md,
-    backgroundColor: colors.background,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
+    alignItems: 'center',
   },
   saveButton: {
-    backgroundColor: colors.primary,
-    borderRadius: radius.md,
-    paddingVertical: spacing.md,
+    backgroundColor: 'rgba(255,255,255,0.25)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.35)',
+    borderRadius: 18,
+    height: 56,
+    justifyContent: 'center',
     alignItems: 'center',
+    width: '100%',
+  },
+  saveButtonPressed: {
+    backgroundColor: 'rgba(255,255,255,0.35)',
   },
   saveButtonDisabled: {
     opacity: 0.6,
   },
   saveButtonText: {
+    fontFamily: 'DMSans_700Bold',
+    fontSize: fontSize.md,
     color: '#FFFFFF',
-    fontSize: fontSize.xl,
-    fontWeight: '700',
+  },
+  skipText: {
+    fontFamily: 'DMSans_400Regular',
+    fontSize: fontSize.sm,
+    color: 'rgba(255,255,255,0.6)',
+    marginTop: spacing.sm,
   },
 });

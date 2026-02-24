@@ -5,6 +5,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 
 import { colors } from '../theme';
 import { loadSettings } from '../storage';
+import BottomNav from '../components/BottomNav';
 
 import OnboardingScreen from '../screens/OnboardingScreen';
 import HomeScreen from '../screens/HomeScreen';
@@ -13,7 +14,7 @@ import HistoryScreen from '../screens/HistoryScreen';
 import TrendsScreen from '../screens/TrendsScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 
-// ─── App Context (for onboarding completion signal) ───────────────────────────
+// --- App Context (for onboarding completion signal) ---
 
 type AppContextType = {
   completeOnboarding: () => void;
@@ -27,7 +28,7 @@ export function useAppContext() {
   return useContext(AppContext);
 }
 
-// ─── Param Lists ──────────────────────────────────────────────────────────────
+// --- Param Lists ---
 
 export type RootStackParamList = {
   Onboarding: undefined;
@@ -46,68 +47,42 @@ export type MainTabParamList = {
   Settings: undefined;
 };
 
-// ─── Navigators ───────────────────────────────────────────────────────────────
+// --- Navigators ---
 
 const RootStack = createStackNavigator<RootStackParamList>();
-const HomeStack = createStackNavigator<HomeStackParamList>();
+const HomeStackNav = createStackNavigator<HomeStackParamList>();
 const MainTab = createBottomTabNavigator<MainTabParamList>();
 
 function HomeStackNavigator() {
   return (
-    <HomeStack.Navigator screenOptions={{ headerShown: false }}>
-      <HomeStack.Screen name="Home" component={HomeScreen} />
-      <HomeStack.Screen name="DailyLog" component={DailyLogScreen} />
-    </HomeStack.Navigator>
+    <HomeStackNav.Navigator screenOptions={{ headerShown: false }}>
+      <HomeStackNav.Screen name="Home" component={HomeScreen} />
+      <HomeStackNav.Screen name="DailyLog" component={DailyLogScreen} />
+    </HomeStackNav.Navigator>
   );
 }
 
 function MainTabNavigator() {
   return (
     <MainTab.Navigator
+      tabBar={(props) => <BottomNav {...props} />}
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.textMuted,
-        tabBarStyle: {
-          backgroundColor: colors.card,
-          borderTopColor: colors.border,
-        },
       }}
     >
-      <MainTab.Screen
-        name="HomeStack"
-        component={HomeStackNavigator}
-        options={{ tabBarLabel: '🏠 Home' }}
-      />
-      <MainTab.Screen
-        name="History"
-        component={HistoryScreen}
-        options={{ tabBarLabel: '📅 History' }}
-      />
-      <MainTab.Screen
-        name="Trends"
-        component={TrendsScreen}
-        options={{ tabBarLabel: '📈 Trends' }}
-      />
-      <MainTab.Screen
-        name="Settings"
-        component={SettingsScreen}
-        options={{ tabBarLabel: '⚙️ Settings' }}
-      />
+      <MainTab.Screen name="HomeStack" component={HomeStackNavigator} />
+      <MainTab.Screen name="History" component={HistoryScreen} />
+      <MainTab.Screen name="Trends" component={TrendsScreen} />
+      <MainTab.Screen name="Settings" component={SettingsScreen} />
     </MainTab.Navigator>
   );
 }
 
-// ─── Root Navigator ───────────────────────────────────────────────────────────
+// --- Root Navigator ---
 
-/**
- * RootNavigator checks onboarding state on mount and routes accordingly.
- * Uses a context so OnboardingScreen can signal completion without prop drilling.
- */
 export function RootNavigator() {
   const [isLoading, setIsLoading] = useState(true);
   const [initialRoute, setInitialRoute] = useState<'Onboarding' | 'Main'>('Onboarding');
-
 
   useEffect(() => {
     (async () => {
@@ -117,7 +92,6 @@ export function RootNavigator() {
     })();
   }, []);
 
-  // Called by OnboardingScreen when user taps "Start Tracking"
   function completeOnboarding() {
     setInitialRoute('Main');
   }

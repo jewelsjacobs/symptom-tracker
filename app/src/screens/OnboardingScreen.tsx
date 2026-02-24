@@ -3,7 +3,7 @@ import {
   View,
   Text,
   StyleSheet,
-  TouchableOpacity,
+  Pressable,
   TextInput,
   ScrollView,
   Alert,
@@ -19,6 +19,7 @@ import { saveSettings, getDefaultSettings } from '../storage';
 import { Symptom } from '../types';
 import { RootStackParamList, useAppContext } from '../navigation';
 import { requestNotificationPermission, scheduleReminder } from '../notifications';
+import SymptomIcon from '../components/SymptomIcon';
 
 type NavProp = StackNavigationProp<RootStackParamList, 'Onboarding'>;
 
@@ -33,25 +34,20 @@ export default function OnboardingScreen() {
   const navigation = useNavigation<NavProp>();
   const { completeOnboarding } = useAppContext();
 
-  // Wizard state
   const [step, setStep] = useState(1);
-
-  // Step 1: symptom selection
   const [selectedSuggestions, setSelectedSuggestions] = useState<string[]>([]);
   const [customInput, setCustomInput] = useState('');
 
-  // Step 2: reminder
   const defaultReminder = new Date();
-  defaultReminder.setHours(20, 0, 0, 0); // 8pm default
+  defaultReminder.setHours(20, 0, 0, 0);
   const [reminderDate, setReminderDate] = useState<Date>(defaultReminder);
   const [reminderEnabled, setReminderEnabled] = useState(true);
   const [showPicker, setShowPicker] = useState(Platform.OS === 'ios');
 
-  // Derived: all selected symptoms (suggestions + custom)
   const allSelected = selectedSuggestions;
   const selectedCount = allSelected.length;
 
-  // ── Step 1 handlers ──
+  // -- Step 1 handlers --
 
   function toggleSuggestion(name: string) {
     if (selectedSuggestions.includes(name)) {
@@ -88,7 +84,7 @@ export default function OnboardingScreen() {
     setStep(2);
   }
 
-  // ── Step 2 handlers ──
+  // -- Step 2 handlers --
 
   function onTimeChange(_event: DateTimePickerEvent, date?: Date) {
     if (Platform.OS === 'android') setShowPicker(false);
@@ -102,12 +98,11 @@ export default function OnboardingScreen() {
 
   async function goToStep3() {
     setReminderEnabled(true);
-    // Request permission now so user sees the prompt while still in reminder context
     await requestNotificationPermission();
     setStep(3);
   }
 
-  // ── Step 3: finish ──
+  // -- Step 3: finish --
 
   async function startTracking() {
     const symptoms: Symptom[] = allSelected.map((name) => ({
@@ -134,64 +129,64 @@ export default function OnboardingScreen() {
       await scheduleReminder(reminderTime);
     }
 
-    // Signal RootNavigator context so it updates its initialRoute state,
-    // then navigate to the Main screen in the root stack.
     completeOnboarding();
-    navigation.reset({
-      index: 0,
-      routes: [{ name: 'Main' }],
-    });
+    navigation.reset({ index: 0, routes: [{ name: 'Main' }] });
   }
 
-  // ── Render helpers ──
-
-  function renderProgressDots() {
-    return (
-      <View style={styles.progressRow}>
-        {[1, 2, 3].map((s) => (
-          <View key={s} style={[styles.dot, step >= s && styles.dotActive]} />
-        ))}
-      </View>
-    );
-  }
+  // -- Helpers --
 
   function formatTime(date: Date) {
     const h = date.getHours();
     const m = String(date.getMinutes()).padStart(2, '0');
     const ampm = h >= 12 ? 'PM' : 'AM';
-    const h12 = h % 12 || 12;
-    return `${h12}:${m} ${ampm}`;
+    return `${h % 12 || 12}:${m} ${ampm}`;
   }
 
-  // ── Step renders ──
+  function renderProgressDots() {
+    return (
+      <View style={styles.progressRow}>
+        {[1, 2, 3].map((s) => (
+          <View key={s} style={[styles.progressDot, step >= s && styles.progressDotActive]} />
+        ))}
+      </View>
+    );
+  }
+
+  // -- Step renders --
 
   function renderStep1() {
     return (
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <Text style={styles.title}>What do you want to track?</Text>
-        <Text style={styles.subtitle}>
-          Select up to 5 symptoms. You can change these later in Settings.
-        </Text>
-        <Text style={styles.countLabel}>{selectedCount}/{MAX_FREE_SYMPTOMS} selected</Text>
+        <Text style={styles.subtitle}>Pick up to 5. You can change these later.</Text>
 
-        <View style={styles.chipsRow}>
+        <View style={styles.counterPill}>
+          <Text style={styles.counterText}>{selectedCount} / {MAX_FREE_SYMPTOMS} selected</Text>
+        </View>
+
+        <View style={styles.chipsGrid}>
           {SUGGESTIONS.map((name) => {
-            const selected = selectedSuggestions.includes(name);
+            const isSelected = selectedSuggestions.includes(name);
             return (
-              <TouchableOpacity
+              <Pressable
                 key={name}
                 onPress={() => toggleSuggestion(name)}
-                style={[styles.chip, selected && styles.chipSelected]}
+                style={[styles.chip, isSelected && styles.chipSelected]}
               >
-                <Text style={[styles.chipText, selected && styles.chipTextSelected]}>
+                <SymptomIcon
+                  name={name}
+                  size={14}
+                  color={isSelected ? colors.primaryDark : colors.textMuted}
+                />
+                <Text style={[styles.chipText, isSelected && styles.chipTextSelected]}>
                   {name}
                 </Text>
-              </TouchableOpacity>
+              </Pressable>
             );
           })}
         </View>
 
-        <Text style={styles.sectionLabel}>Or add your own:</Text>
+        {/* Custom symptoms */}
         <View style={styles.customRow}>
           <TextInput
             style={styles.input}
@@ -202,20 +197,20 @@ export default function OnboardingScreen() {
             returnKeyType="done"
             onSubmitEditing={addCustomSymptom}
           />
-          <TouchableOpacity style={styles.addBtn} onPress={addCustomSymptom}>
+          <Pressable style={styles.addBtn} onPress={addCustomSymptom}>
             <Text style={styles.addBtnText}>Add</Text>
-          </TouchableOpacity>
+          </Pressable>
         </View>
 
-        {/* Show custom (non-suggestion) symptoms */}
         {allSelected
           .filter((s) => !SUGGESTIONS.includes(s))
           .map((name) => (
             <View key={name} style={styles.customTag}>
+              <SymptomIcon name={name} size={12} color={colors.primaryDark} />
               <Text style={styles.customTagText}>{name}</Text>
-              <TouchableOpacity onPress={() => toggleSuggestion(name)}>
-                <Text style={styles.removeText}> ✕</Text>
-              </TouchableOpacity>
+              <Pressable onPress={() => toggleSuggestion(name)} hitSlop={8}>
+                <Text style={styles.customTagRemove}>x</Text>
+              </Pressable>
             </View>
           ))}
       </ScrollView>
@@ -225,9 +220,9 @@ export default function OnboardingScreen() {
   function renderStep2() {
     return (
       <View style={styles.stepContent}>
-        <Text style={styles.title}>Set a daily reminder</Text>
+        <Text style={styles.title}>When should we remind you?</Text>
         <Text style={styles.subtitle}>
-          A gentle nudge each day helps build the habit. You can skip this for now.
+          A gentle nudge each day helps build the habit.
         </Text>
 
         <View style={styles.timeDisplay}>
@@ -245,12 +240,9 @@ export default function OnboardingScreen() {
         )}
 
         {Platform.OS === 'android' && !showPicker && (
-          <TouchableOpacity
-            style={styles.changeTimeBtn}
-            onPress={() => setShowPicker(true)}
-          >
+          <Pressable style={styles.changeTimeBtn} onPress={() => setShowPicker(true)}>
             <Text style={styles.changeTimeBtnText}>Change time</Text>
-          </TouchableOpacity>
+          </Pressable>
         )}
       </View>
     );
@@ -258,21 +250,23 @@ export default function OnboardingScreen() {
 
   function renderStep3() {
     return (
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <Text style={styles.emoji}>🎉</Text>
-        <Text style={styles.title}>You're all set!</Text>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <Text style={styles.title}>You're all set</Text>
         <Text style={styles.subtitle}>Here's what you'll be tracking:</Text>
 
-        <View style={styles.summaryBox}>
+        <View style={styles.summaryCard}>
           {allSelected.map((name) => (
-            <Text key={name} style={styles.summaryItem}>• {name}</Text>
+            <View key={name} style={styles.summaryRow}>
+              <SymptomIcon name={name} size={14} color={colors.text} showBox />
+              <Text style={styles.summaryName}>{name}</Text>
+            </View>
           ))}
         </View>
 
         <Text style={styles.summaryReminder}>
           {reminderEnabled
-            ? `📅 Daily reminder at ${formatTime(reminderDate)}`
-            : '🔕 No daily reminder'}
+            ? `Reminder set for ${formatTime(reminderDate)}`
+            : 'No reminder set'}
         </Text>
       </ScrollView>
     );
@@ -291,32 +285,32 @@ export default function OnboardingScreen() {
       {/* Navigation buttons */}
       <View style={styles.navRow}>
         {step > 1 && (
-          <TouchableOpacity style={styles.backBtn} onPress={() => setStep(step - 1)}>
-            <Text style={styles.backBtnText}>← Back</Text>
-          </TouchableOpacity>
+          <Pressable style={styles.backBtn} onPress={() => setStep(step - 1)}>
+            <Text style={styles.backBtnText}>Back</Text>
+          </Pressable>
         )}
 
         {step === 1 && (
-          <TouchableOpacity style={styles.nextBtn} onPress={goToStep2}>
-            <Text style={styles.nextBtnText}>Next →</Text>
-          </TouchableOpacity>
+          <Pressable style={styles.nextBtn} onPress={goToStep2}>
+            <Text style={styles.nextBtnText}>Next</Text>
+          </Pressable>
         )}
 
         {step === 2 && (
           <View style={styles.step2Btns}>
-            <TouchableOpacity style={styles.skipBtn} onPress={skipReminder}>
-              <Text style={styles.skipBtnText}>Skip</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.nextBtn} onPress={goToStep3}>
-              <Text style={styles.nextBtnText}>Next →</Text>
-            </TouchableOpacity>
+            <Pressable style={styles.skipBtn} onPress={skipReminder}>
+              <Text style={styles.skipBtnText}>Skip for now</Text>
+            </Pressable>
+            <Pressable style={styles.nextBtn} onPress={goToStep3}>
+              <Text style={styles.nextBtnText}>Next</Text>
+            </Pressable>
           </View>
         )}
 
         {step === 3 && (
-          <TouchableOpacity style={styles.startBtn} onPress={startTracking}>
-            <Text style={styles.startBtnText}>Start Tracking 🚀</Text>
-          </TouchableOpacity>
+          <Pressable style={styles.startBtn} onPress={startTracking}>
+            <Text style={styles.startBtnText}>Start Tracking</Text>
+          </Pressable>
         )}
       </View>
     </SafeAreaView>
@@ -335,13 +329,15 @@ const styles = StyleSheet.create({
     paddingTop: spacing.lg,
     paddingBottom: spacing.sm,
   },
-  dot: {
+  progressDot: {
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: colors.border,
+    borderWidth: 1.5,
+    borderColor: colors.primary,
+    backgroundColor: 'transparent',
   },
-  dotActive: {
+  progressDotActive: {
     backgroundColor: colors.primary,
   },
   content: {
@@ -356,54 +352,66 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
   },
   title: {
+    fontFamily: 'DMSans_700Bold',
     fontSize: fontSize.xxl,
-    fontWeight: '700',
     color: colors.text,
     marginBottom: spacing.sm,
   },
   subtitle: {
-    fontSize: fontSize.lg,
+    fontFamily: 'DMSans_400Regular',
+    fontSize: fontSize.md,
     color: colors.textMuted,
     marginBottom: spacing.lg,
     lineHeight: 22,
   },
-  countLabel: {
-    fontSize: fontSize.md,
-    color: colors.primary,
-    fontWeight: '600',
+
+  // Counter pill
+  counterPill: {
+    alignSelf: 'flex-start',
+    backgroundColor: colors.primaryLight,
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
     marginBottom: spacing.md,
   },
-  chipsRow: {
+  counterText: {
+    fontFamily: 'DMSans_600SemiBold',
+    fontSize: fontSize.xs,
+    color: colors.primaryDark,
+  },
+
+  // Chip grid
+  chipsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
     marginBottom: spacing.lg,
   },
   chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
-    borderRadius: radius.lg,
+    borderRadius: radius.pill,
     borderWidth: 1.5,
-    borderColor: colors.border,
-    backgroundColor: colors.card,
+    borderColor: 'rgba(232,114,90,0.15)',
+    backgroundColor: colors.surface,
   },
   chipSelected: {
-    backgroundColor: colors.primary,
+    backgroundColor: colors.primaryLight,
     borderColor: colors.primary,
   },
   chipText: {
-    fontSize: fontSize.md,
-    color: colors.text,
+    fontFamily: 'DMSans_600SemiBold',
+    fontSize: fontSize.sm,
+    color: colors.textMuted,
   },
   chipTextSelected: {
-    color: '#FFFFFF',
-    fontWeight: '600',
+    color: colors.primaryDark,
   },
-  sectionLabel: {
-    fontSize: fontSize.md,
-    color: colors.textMuted,
-    marginBottom: spacing.sm,
-  },
+
+  // Custom symptom input
   customRow: {
     flexDirection: 'row',
     gap: 8,
@@ -413,11 +421,12 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 44,
     borderRadius: radius.sm,
-    borderWidth: 1.5,
-    borderColor: colors.border,
-    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: 'rgba(232,114,90,0.15)',
+    backgroundColor: colors.surface,
     paddingHorizontal: spacing.md,
-    fontSize: fontSize.lg,
+    fontFamily: 'DMSans_400Regular',
+    fontSize: fontSize.md,
     color: colors.text,
   },
   addBtn: {
@@ -427,36 +436,41 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   addBtnText: {
+    fontFamily: 'DMSans_700Bold',
     color: '#FFFFFF',
-    fontWeight: '600',
-    fontSize: fontSize.lg,
+    fontSize: fontSize.md,
   },
   customTag: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 6,
     backgroundColor: colors.primaryLight,
-    borderRadius: radius.sm,
+    borderRadius: radius.pill,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
+    paddingVertical: spacing.xs + 2,
     alignSelf: 'flex-start',
     marginBottom: spacing.xs,
   },
   customTagText: {
-    color: '#FFFFFF',
-    fontSize: fontSize.md,
+    fontFamily: 'DMSans_500Medium',
+    color: colors.primaryDark,
+    fontSize: fontSize.sm,
   },
-  removeText: {
-    color: '#FFFFFF',
-    fontSize: fontSize.md,
+  customTagRemove: {
+    fontFamily: 'DMSans_600SemiBold',
+    color: colors.primaryDark,
+    fontSize: fontSize.sm,
+    marginLeft: 2,
   },
+
   // Step 2
   timeDisplay: {
     alignItems: 'center',
     paddingVertical: spacing.xl,
   },
   timeText: {
-    fontSize: fontSize.xxxl,
-    fontWeight: '700',
+    fontFamily: 'DMSans_700Bold',
+    fontSize: 48,
     color: colors.primary,
   },
   changeTimeBtn: {
@@ -464,34 +478,42 @@ const styles = StyleSheet.create({
     padding: spacing.md,
   },
   changeTimeBtnText: {
+    fontFamily: 'DMSans_600SemiBold',
     color: colors.primary,
-    fontSize: fontSize.lg,
+    fontSize: fontSize.md,
   },
+
   // Step 3
-  emoji: {
-    fontSize: 48,
-    textAlign: 'center',
-    marginVertical: spacing.lg,
-  },
-  summaryBox: {
-    backgroundColor: colors.card,
+  summaryCard: {
+    backgroundColor: colors.surface,
     borderRadius: radius.md,
     padding: spacing.md,
     marginBottom: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.border,
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 1,
+    shadowRadius: 8,
+    elevation: 2,
   },
-  summaryItem: {
-    fontSize: fontSize.lg,
+  summaryRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.sm,
+  },
+  summaryName: {
+    fontFamily: 'DMSans_500Medium',
+    fontSize: fontSize.md,
     color: colors.text,
-    paddingVertical: spacing.xs,
   },
   summaryReminder: {
-    fontSize: fontSize.lg,
+    fontFamily: 'DMSans_400Regular',
+    fontSize: fontSize.md,
     color: colors.textMuted,
     textAlign: 'center',
     marginTop: spacing.sm,
   },
+
   // Nav buttons
   navRow: {
     flexDirection: 'row',
@@ -504,19 +526,21 @@ const styles = StyleSheet.create({
     padding: spacing.md,
   },
   backBtnText: {
+    fontFamily: 'DMSans_500Medium',
     color: colors.textMuted,
-    fontSize: fontSize.lg,
+    fontSize: fontSize.md,
   },
   nextBtn: {
     backgroundColor: colors.primary,
     borderRadius: radius.md,
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.md,
+    marginLeft: 'auto',
   },
   nextBtnText: {
+    fontFamily: 'DMSans_700Bold',
     color: '#FFFFFF',
-    fontSize: fontSize.lg,
-    fontWeight: '700',
+    fontSize: fontSize.md,
   },
   step2Btns: {
     flexDirection: 'row',
@@ -528,8 +552,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   skipBtnText: {
+    fontFamily: 'DMSans_400Regular',
     color: colors.textMuted,
-    fontSize: fontSize.lg,
+    fontSize: fontSize.md,
   },
   startBtn: {
     flex: 1,
@@ -539,8 +564,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   startBtnText: {
+    fontFamily: 'DMSans_700Bold',
     color: '#FFFFFF',
-    fontSize: fontSize.xl,
-    fontWeight: '700',
+    fontSize: fontSize.lg,
   },
 });

@@ -4,7 +4,7 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  TouchableOpacity,
+  Pressable,
   TextInput,
   Alert,
   Platform,
@@ -26,8 +26,8 @@ import { restorePurchases } from '../purchases';
 import UpgradePrompt from '../components/UpgradePrompt';
 import { exportPdf } from '../export/generatePdf';
 import { exportCsv } from '../export/generateCsv';
+import SymptomIcon from '../components/SymptomIcon';
 
-// Pull app version from package.json
 import pkg from '../../package.json';
 
 const MAX_FREE_SYMPTOMS = 5;
@@ -57,11 +57,9 @@ export default function SettingsScreen() {
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [pickerDate, setPickerDate] = useState<Date>(new Date());
 
-  // Premium
   const { premium, loading: premiumLoading, refresh: refreshPremium } = usePremium();
   const [exporting, setExporting] = useState(false);
 
-  // Auth state
   const [user, setUser] = useState<{ email?: string } | null>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authEmail, setAuthEmail] = useState('');
@@ -86,13 +84,12 @@ export default function SettingsScreen() {
     await saveSettings(updated);
   }
 
-  // ── Symptoms ──
+  // -- Symptoms --
 
   async function addSymptom() {
     if (!settings) return;
     const name = newSymptom.trim();
     if (!name) return;
-
     const limit = premium ? MAX_PREMIUM_SYMPTOMS : MAX_FREE_SYMPTOMS;
     if (settings.symptoms.length >= limit) {
       if (!premium) {
@@ -103,18 +100,15 @@ export default function SettingsScreen() {
       }
       return;
     }
-
     if (settings.symptoms.find((s) => s.name.toLowerCase() === name.toLowerCase())) {
       Alert.alert('Already exists', `"${name}" is already in your list.`);
       return;
     }
-
     const symptom: Symptom = {
       id: Date.now().toString() + Math.random().toString(36).slice(2),
       name,
       createdAt: new Date().toISOString(),
     };
-
     await persist({ ...settings, symptoms: [...settings.symptoms, symptom] });
     setNewSymptom('');
   }
@@ -140,23 +134,18 @@ export default function SettingsScreen() {
     );
   }
 
-  // ── Reminder ──
+  // -- Reminder --
 
   async function onTimeChange(_event: DateTimePickerEvent, date?: Date) {
     if (Platform.OS === 'android') setShowTimePicker(false);
     if (!date || !settings) return;
     setPickerDate(date);
-
     const h = String(date.getHours()).padStart(2, '0');
     const m = String(date.getMinutes()).padStart(2, '0');
     const timeStr = `${h}:${m}`;
-
     await persist({ ...settings, reminderTime: timeStr });
-
     const granted = await requestNotificationPermission();
-    if (granted) {
-      await scheduleReminder(timeStr);
-    }
+    if (granted) await scheduleReminder(timeStr);
   }
 
   async function clearReminderTime() {
@@ -178,7 +167,7 @@ export default function SettingsScreen() {
     setShowTimePicker(true);
   }
 
-  // ── Auth ──
+  // -- Auth --
 
   async function handleAuth() {
     if (!authEmail || !authPassword) return;
@@ -187,14 +176,11 @@ export default function SettingsScreen() {
       const u = authMode === 'signup'
         ? await signUp(authEmail, authPassword)
         : await signIn(authEmail, authPassword);
-
       setUser(u);
       await persist({ ...settings!, accountEmail: authEmail });
       setShowAuthModal(false);
       setAuthEmail('');
       setAuthPassword('');
-
-      // Sync on sign in
       const logs = await loadAllLogs();
       await pushToCloud(settings!, logs);
       await pullFromCloud();
@@ -211,7 +197,7 @@ export default function SettingsScreen() {
     await persist({ ...settings!, accountEmail: null });
   }
 
-  // ── Export ──
+  // -- Export --
 
   async function handlePdfExport() {
     if (!settings) return;
@@ -221,9 +207,7 @@ export default function SettingsScreen() {
       const to = new Date();
       const from = new Date();
       from.setDate(from.getDate() - 30);
-      const fromStr = from.toISOString().split('T')[0];
-      const toStr = to.toISOString().split('T')[0];
-      await exportPdf(settings, logs, fromStr, toStr);
+      await exportPdf(settings, logs, from.toISOString().split('T')[0], to.toISOString().split('T')[0]);
     } catch {
       Alert.alert('Export failed', 'Could not generate PDF. Please try again.');
     } finally {
@@ -252,23 +236,21 @@ export default function SettingsScreen() {
         <Text style={styles.title}>Settings</Text>
       </View>
 
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
 
-        {/* ── My Symptoms ── */}
-        <Text style={styles.sectionTitle}>My Symptoms</Text>
+        {/* -- My Symptoms -- */}
+        <Text style={styles.sectionLabel}>MY SYMPTOMS</Text>
         <View style={styles.card}>
           {settings.symptoms.length === 0 ? (
             <Text style={styles.emptyText}>No symptoms added yet.</Text>
           ) : (
             settings.symptoms.map((symptom) => (
               <View key={symptom.id} style={styles.symptomRow}>
+                <SymptomIcon name={symptom.name} size={14} color={colors.text} showBox />
                 <Text style={styles.symptomName}>{symptom.name}</Text>
-                <TouchableOpacity
-                  onPress={() => deleteSymptom(symptom.id)}
-                  style={styles.deleteBtn}
-                >
-                  <Text style={styles.deleteBtnText}>✕</Text>
-                </TouchableOpacity>
+                <Pressable onPress={() => deleteSymptom(symptom.id)} hitSlop={8} style={styles.deleteBtn}>
+                  <Text style={styles.deleteBtnText}>x</Text>
+                </Pressable>
               </View>
             ))
           )}
@@ -288,16 +270,16 @@ export default function SettingsScreen() {
               onSubmitEditing={addSymptom}
               editable={premium || settings.symptoms.length < MAX_FREE_SYMPTOMS}
             />
-            <TouchableOpacity
+            <Pressable
               style={[
                 styles.addBtn,
-                !premium && settings.symptoms.length >= MAX_FREE_SYMPTOMS && styles.addBtnDisabled,
+                (!premium && settings.symptoms.length >= MAX_FREE_SYMPTOMS) && styles.addBtnDisabled,
               ]}
               onPress={addSymptom}
               disabled={!premium && settings.symptoms.length >= MAX_FREE_SYMPTOMS}
             >
               <Text style={styles.addBtnText}>Add</Text>
-            </TouchableOpacity>
+            </Pressable>
           </View>
 
           <Text style={styles.hint}>
@@ -305,28 +287,26 @@ export default function SettingsScreen() {
           </Text>
         </View>
 
-        {/* ── Reminder ── */}
-        <Text style={styles.sectionTitle}>Daily Reminder</Text>
+        {/* -- Reminder -- */}
+        <Text style={styles.sectionLabel}>REMINDER</Text>
         <View style={styles.card}>
           <View style={styles.reminderRow}>
             <Text style={styles.reminderValue}>
-              {settings.reminderTime
-                ? `🔔 ${formatTime(pickerDate)}`
-                : '🔕 No reminder set'}
+              {settings.reminderTime ? formatTime(pickerDate) : 'No reminder'}
             </Text>
             <View style={styles.reminderActions}>
-              <TouchableOpacity
+              <Pressable
                 style={styles.reminderBtn}
                 onPress={settings.reminderTime ? () => setShowTimePicker(true) : handleSetTimePress}
               >
                 <Text style={styles.reminderBtnText}>
-                  {settings.reminderTime ? 'Change' : 'Set time'}
+                  {settings.reminderTime ? 'Change' : 'Set one'}
                 </Text>
-              </TouchableOpacity>
+              </Pressable>
               {settings.reminderTime ? (
-                <TouchableOpacity style={styles.reminderBtnSecondary} onPress={clearReminderTime}>
+                <Pressable style={styles.reminderBtnSecondary} onPress={clearReminderTime}>
                   <Text style={styles.reminderBtnSecondaryText}>Clear</Text>
-                </TouchableOpacity>
+                </Pressable>
               ) : null}
             </View>
           </View>
@@ -342,122 +322,79 @@ export default function SettingsScreen() {
           )}
         </View>
 
-        {/* ── Premium ── */}
-        <Text style={styles.sectionTitle}>Premium</Text>
-        <View style={styles.card}>
-          {premiumLoading ? (
-            <ActivityIndicator color={colors.primary} />
-          ) : premium ? (
-            <>
-              <Text style={styles.premiumActive}>Premium Active</Text>
-              <Text style={styles.hint}>Unlimited symptoms, full history, PDF export</Text>
-            </>
-          ) : (
-            <UpgradePrompt onSuccess={refreshPremium} />
-          )}
-          <TouchableOpacity
-            style={styles.restoreBtn}
-            onPress={async () => {
-              const restored = await restorePurchases();
-              if (restored) {
-                refreshPremium();
-                Alert.alert('Restored!', 'Your Premium subscription has been restored.');
-              } else {
-                Alert.alert('Nothing to restore', 'No previous Premium purchase found.');
-              }
-            }}
-          >
-            <Text style={styles.restoreBtnText}>Restore purchase</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* ── Account ── */}
-        <Text style={styles.sectionTitle}>Account</Text>
+        {/* -- Account -- */}
+        <Text style={styles.sectionLabel}>ACCOUNT</Text>
         <View style={styles.card}>
           {user ? (
             <>
-              <Text style={styles.accountText}>{user.email}</Text>
+              <Text style={styles.accountEmail}>{user.email}</Text>
+              {premium && (
+                <View style={styles.premiumBadge}>
+                  <Text style={styles.premiumBadgeText}>Premium</Text>
+                </View>
+              )}
               <Text style={styles.hint}>Your data is backed up to the cloud.</Text>
-              <TouchableOpacity style={styles.signOutBtn} onPress={handleSignOut}>
+              <Pressable style={styles.signOutBtn} onPress={handleSignOut}>
                 <Text style={styles.signOutBtnText}>Sign out</Text>
-              </TouchableOpacity>
+              </Pressable>
             </>
           ) : (
             <>
-              <Text style={styles.hint}>Sign in to sync across devices and enable PDF export.</Text>
-              <TouchableOpacity style={styles.signInBtn} onPress={() => setShowAuthModal(true)}>
+              <Text style={styles.hint}>Sign in to back up your data</Text>
+              <Pressable style={styles.signInBtn} onPress={() => setShowAuthModal(true)}>
                 <Text style={styles.signInBtnText}>Sign in / Create account</Text>
-              </TouchableOpacity>
+              </Pressable>
             </>
           )}
         </View>
 
-        {/* Auth Modal */}
-        <Modal visible={showAuthModal} animationType="slide" transparent onRequestClose={() => setShowAuthModal(false)}>
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalCard}>
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>
-                  {authMode === 'signin' ? 'Sign In' : 'Create Account'}
-                </Text>
-                <TouchableOpacity onPress={() => setShowAuthModal(false)}>
-                  <Text style={styles.closeBtn}>✕</Text>
-                </TouchableOpacity>
-              </View>
-
-              <TextInput
-                style={styles.authInput}
-                value={authEmail}
-                onChangeText={setAuthEmail}
-                placeholder="Email"
-                placeholderTextColor={colors.textMuted}
-                autoCapitalize="none"
-                keyboardType="email-address"
-                textContentType="emailAddress"
-              />
-              <TextInput
-                style={styles.authInput}
-                value={authPassword}
-                onChangeText={setAuthPassword}
-                placeholder="Password"
-                placeholderTextColor={colors.textMuted}
-                secureTextEntry
-                textContentType="password"
-              />
-
-              <TouchableOpacity
-                style={[styles.authSubmitBtn, authLoading && { opacity: 0.6 }]}
-                onPress={handleAuth}
-                disabled={authLoading}
+        {/* -- Premium -- */}
+        {!premium && (
+          <>
+            <Text style={styles.sectionLabel}>PREMIUM</Text>
+            <View style={styles.card}>
+              {premiumLoading ? (
+                <ActivityIndicator color={colors.primary} />
+              ) : (
+                <UpgradePrompt onSuccess={refreshPremium} />
+              )}
+              <Pressable
+                style={styles.restoreBtn}
+                onPress={async () => {
+                  const restored = await restorePurchases();
+                  if (restored) {
+                    refreshPremium();
+                    Alert.alert('Restored!', 'Your Premium subscription has been restored.');
+                  } else {
+                    Alert.alert('Nothing to restore', 'No previous Premium purchase found.');
+                  }
+                }}
               >
-                {authLoading ? (
-                  <ActivityIndicator color="#FFFFFF" />
-                ) : (
-                  <Text style={styles.authSubmitBtnText}>
-                    {authMode === 'signin' ? 'Sign In' : 'Create Account'}
-                  </Text>
-                )}
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.authToggle}
-                onPress={() => setAuthMode(authMode === 'signin' ? 'signup' : 'signin')}
-              >
-                <Text style={styles.authToggleText}>
-                  {authMode === 'signin'
-                    ? "Don't have an account? Sign up"
-                    : 'Already have an account? Sign in'}
-                </Text>
-              </TouchableOpacity>
+                <Text style={styles.restoreBtnText}>Restore purchase</Text>
+              </Pressable>
             </View>
-          </View>
-        </Modal>
+          </>
+        )}
 
-        {/* ── Export ── */}
-        <Text style={styles.sectionTitle}>Export</Text>
+        {/* -- Export -- */}
+        <Text style={styles.sectionLabel}>EXPORT</Text>
         <View style={styles.card}>
-          <TouchableOpacity
-            style={[styles.exportBtn, !premium && styles.exportBtnLocked]}
+          <Pressable
+            style={styles.exportRow}
+            onPress={handleCsvExport}
+            disabled={exporting}
+          >
+            <View>
+              <Text style={styles.exportRowTitle}>Export CSV</Text>
+              <Text style={styles.exportRowSub}>All your data as a spreadsheet</Text>
+            </View>
+            <Text style={styles.chevron}>{'\u203A'}</Text>
+          </Pressable>
+
+          <View style={styles.divider} />
+
+          <Pressable
+            style={styles.exportRow}
             onPress={() => {
               if (!premium) {
                 Alert.alert(
@@ -471,47 +408,87 @@ export default function SettingsScreen() {
             }}
             disabled={exporting}
           >
+            <View>
+              <Text style={[styles.exportRowTitle, !premium && styles.exportLocked]}>
+                Export PDF Report {!premium ? '(Premium)' : ''}
+              </Text>
+              <Text style={styles.exportRowSub}>For your doctor appointment</Text>
+            </View>
             {exporting ? (
-              <ActivityIndicator color={premium ? '#fff' : colors.primary} />
+              <ActivityIndicator size="small" color={colors.primary} />
             ) : (
-              <>
-                <Text style={[styles.exportBtnText, !premium && styles.exportBtnTextLocked]}>
-                  {premium ? 'Export PDF Report' : 'PDF Report (Premium)'}
-                </Text>
-                <Text style={styles.exportBtnSub}>For your doctor appointment</Text>
-              </>
+              <Text style={styles.chevron}>{'\u203A'}</Text>
             )}
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.exportBtn, styles.exportBtnSecondary]}
-            onPress={handleCsvExport}
-            disabled={exporting}
-          >
-            <Text style={styles.exportBtnTextSecondary}>Export CSV</Text>
-            <Text style={styles.exportBtnSub}>All your data as a spreadsheet</Text>
-          </TouchableOpacity>
+          </Pressable>
         </View>
 
-        {/* ── About ── */}
-        <Text style={styles.sectionTitle}>About</Text>
+        {/* -- About -- */}
+        <Text style={styles.sectionLabel}>ABOUT</Text>
         <View style={styles.card}>
-          <View style={styles.aboutRow}>
-            <Text style={styles.aboutLabel}>App name</Text>
-            <Text style={styles.aboutValue}>Ebb</Text>
-          </View>
-          <View style={styles.aboutRow}>
-            <Text style={styles.aboutLabel}>Version</Text>
-            <Text style={styles.aboutValue}>{pkg.version}</Text>
-          </View>
-          <View style={styles.aboutRow}>
-            <Text style={styles.aboutLabel}>Tagline</Text>
-            <Text style={styles.aboutValue}>Track in 30 seconds a day</Text>
-          </View>
+          <Text style={styles.aboutName}>Ebb</Text>
+          <Text style={styles.aboutVersion}>v{pkg.version}</Text>
+          <Text style={styles.aboutTagline}>Track in 30 seconds a day</Text>
         </View>
 
-        <View style={{ height: spacing.xl }} />
+        <View style={{ height: 100 }} />
       </ScrollView>
+
+      {/* Auth Modal */}
+      <Modal visible={showAuthModal} animationType="slide" transparent onRequestClose={() => setShowAuthModal(false)}>
+        <Pressable style={styles.modalOverlay} onPress={() => setShowAuthModal(false)}>
+          <Pressable style={styles.modalCard} onPress={() => {}}>
+            <View style={styles.handleBar} />
+            <Text style={styles.modalTitle}>
+              {authMode === 'signin' ? 'Sign In' : 'Create Account'}
+            </Text>
+
+            <TextInput
+              style={styles.authInput}
+              value={authEmail}
+              onChangeText={setAuthEmail}
+              placeholder="Email"
+              placeholderTextColor={colors.textMuted}
+              autoCapitalize="none"
+              keyboardType="email-address"
+              textContentType="emailAddress"
+            />
+            <TextInput
+              style={styles.authInput}
+              value={authPassword}
+              onChangeText={setAuthPassword}
+              placeholder="Password"
+              placeholderTextColor={colors.textMuted}
+              secureTextEntry
+              textContentType="password"
+            />
+
+            <Pressable
+              style={[styles.authSubmitBtn, authLoading && { opacity: 0.6 }]}
+              onPress={handleAuth}
+              disabled={authLoading}
+            >
+              {authLoading ? (
+                <ActivityIndicator color="#FFFFFF" />
+              ) : (
+                <Text style={styles.authSubmitBtnText}>
+                  {authMode === 'signin' ? 'Sign In' : 'Create Account'}
+                </Text>
+              )}
+            </Pressable>
+
+            <Pressable
+              style={styles.authToggle}
+              onPress={() => setAuthMode(authMode === 'signin' ? 'signup' : 'signin')}
+            >
+              <Text style={styles.authToggleText}>
+                {authMode === 'signin'
+                  ? "Don't have an account? Sign up"
+                  : 'Already have an account? Sign in'}
+              </Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -519,50 +496,73 @@ export default function SettingsScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   header: {
-    padding: spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.md,
   },
-  title: { fontSize: fontSize.xxl, fontWeight: '700', color: colors.text },
-  content: { padding: spacing.md },
-  sectionTitle: {
-    fontSize: fontSize.sm,
-    fontWeight: '700',
+  title: {
+    fontFamily: 'DMSans_700Bold',
+    fontSize: fontSize.xxl,
+    color: colors.text,
+  },
+  content: { paddingHorizontal: spacing.md },
+  sectionLabel: {
+    fontFamily: 'DMSans_600SemiBold',
+    fontSize: fontSize.xs,
     color: colors.textMuted,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
+    letterSpacing: 1.2,
     marginTop: spacing.lg,
     marginBottom: spacing.sm,
     marginLeft: spacing.xs,
   },
   card: {
-    backgroundColor: colors.card,
+    backgroundColor: colors.surface,
     borderRadius: radius.md,
     padding: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.border,
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 1,
+    shadowRadius: 8,
+    elevation: 2,
   },
-  emptyText: { fontSize: fontSize.md, color: colors.textMuted, paddingVertical: spacing.sm },
+
+  // Symptoms
+  emptyText: {
+    fontFamily: 'DMSans_400Regular',
+    fontSize: fontSize.md,
+    color: colors.textMuted,
+    paddingVertical: spacing.sm,
+  },
   symptomRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    gap: spacing.sm,
     paddingVertical: spacing.sm,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    borderBottomColor: 'rgba(0,0,0,0.06)',
   },
-  symptomName: { fontSize: fontSize.lg, color: colors.text },
+  symptomName: {
+    fontFamily: 'DMSans_500Medium',
+    fontSize: fontSize.md,
+    color: colors.text,
+    flex: 1,
+  },
   deleteBtn: { padding: spacing.xs },
-  deleteBtnText: { fontSize: fontSize.lg, color: colors.danger },
+  deleteBtnText: {
+    fontFamily: 'DMSans_600SemiBold',
+    fontSize: fontSize.lg,
+    color: colors.primaryDark,
+  },
   addRow: { flexDirection: 'row', gap: 8, marginTop: spacing.md },
   input: {
     flex: 1,
     height: 44,
     borderRadius: radius.sm,
-    borderWidth: 1.5,
-    borderColor: colors.border,
+    borderWidth: 1,
+    borderColor: 'rgba(232,114,90,0.15)',
     paddingHorizontal: spacing.md,
-    fontSize: fontSize.lg,
+    fontFamily: 'DMSans_400Regular',
+    fontSize: fontSize.md,
     color: colors.text,
   },
   addBtn: {
@@ -571,16 +571,30 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     justifyContent: 'center',
   },
-  addBtnDisabled: { backgroundColor: colors.border },
-  addBtnText: { color: '#FFFFFF', fontWeight: '600', fontSize: fontSize.lg },
-  hint: { fontSize: fontSize.sm, color: colors.textMuted, marginTop: spacing.sm },
+  addBtnDisabled: { backgroundColor: 'rgba(0,0,0,0.08)' },
+  addBtnText: {
+    fontFamily: 'DMSans_700Bold',
+    color: '#FFFFFF',
+    fontSize: fontSize.md,
+  },
+  hint: {
+    fontFamily: 'DMSans_400Regular',
+    fontSize: fontSize.xs,
+    color: colors.textMuted,
+    marginTop: spacing.sm,
+  },
+
   // Reminder
   reminderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  reminderValue: { fontSize: fontSize.lg, color: colors.text },
+  reminderValue: {
+    fontFamily: 'DMSans_500Medium',
+    fontSize: fontSize.md,
+    color: colors.text,
+  },
   reminderActions: { flexDirection: 'row', gap: 8 },
   reminderBtn: {
     backgroundColor: colors.primary,
@@ -588,17 +602,44 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs,
   },
-  reminderBtnText: { color: '#FFFFFF', fontWeight: '600', fontSize: fontSize.md },
+  reminderBtnText: {
+    fontFamily: 'DMSans_600SemiBold',
+    color: '#FFFFFF',
+    fontSize: fontSize.sm,
+  },
   reminderBtnSecondary: {
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: 'rgba(232,114,90,0.15)',
     borderRadius: radius.sm,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs,
   },
-  reminderBtnSecondaryText: { color: colors.textMuted, fontSize: fontSize.md },
+  reminderBtnSecondaryText: {
+    fontFamily: 'DMSans_500Medium',
+    color: colors.textMuted,
+    fontSize: fontSize.sm,
+  },
+
   // Account
-  accountText: { fontSize: fontSize.lg, color: colors.text, marginBottom: spacing.xs },
+  accountEmail: {
+    fontFamily: 'DMSans_500Medium',
+    fontSize: fontSize.md,
+    color: colors.text,
+    marginBottom: spacing.xs,
+  },
+  premiumBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: colors.primaryLight,
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.sm + 2,
+    paddingVertical: spacing.xs,
+    marginBottom: spacing.xs,
+  },
+  premiumBadgeText: {
+    fontFamily: 'DMSans_700Bold',
+    fontSize: fontSize.xs,
+    color: colors.primary,
+  },
   signInBtn: {
     marginTop: spacing.md,
     borderWidth: 1.5,
@@ -607,81 +648,136 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
     alignItems: 'center',
   },
-  signInBtnText: { color: colors.primary, fontWeight: '600', fontSize: fontSize.lg },
+  signInBtnText: {
+    fontFamily: 'DMSans_600SemiBold',
+    color: colors.primary,
+    fontSize: fontSize.md,
+  },
   signOutBtn: {
     marginTop: spacing.md,
     borderWidth: 1.5,
-    borderColor: colors.danger,
+    borderColor: colors.primaryDark,
     borderRadius: radius.sm,
     paddingVertical: spacing.sm,
     alignItems: 'center',
   },
-  signOutBtnText: { color: colors.danger, fontWeight: '600', fontSize: fontSize.lg },
-  // Auth Modal
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    justifyContent: 'flex-end',
+  signOutBtnText: {
+    fontFamily: 'DMSans_600SemiBold',
+    color: colors.primaryDark,
+    fontSize: fontSize.md,
   },
-  modalCard: {
-    backgroundColor: colors.card,
-    borderTopLeftRadius: radius.lg,
-    borderTopRightRadius: radius.lg,
-    padding: spacing.lg,
+
+  // Premium
+  restoreBtn: { alignItems: 'center', marginTop: spacing.md, padding: spacing.sm },
+  restoreBtnText: {
+    fontFamily: 'DMSans_400Regular',
+    color: colors.textMuted,
+    fontSize: fontSize.xs,
   },
-  modalHeader: {
+
+  // Export
+  exportRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    paddingVertical: spacing.sm,
+  },
+  exportRowTitle: {
+    fontFamily: 'DMSans_600SemiBold',
+    fontSize: fontSize.md,
+    color: colors.text,
+  },
+  exportLocked: {
+    color: colors.textMuted,
+  },
+  exportRowSub: {
+    fontFamily: 'DMSans_400Regular',
+    fontSize: fontSize.xs,
+    color: colors.textMuted,
+    marginTop: 1,
+  },
+  chevron: {
+    fontSize: fontSize.xl,
+    color: colors.textMuted,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: 'rgba(0,0,0,0.06)',
+  },
+
+  // About
+  aboutName: {
+    fontFamily: 'DMSans_700Bold',
+    fontSize: fontSize.lg,
+    color: colors.text,
+  },
+  aboutVersion: {
+    fontFamily: 'DMSans_400Regular',
+    fontSize: fontSize.sm,
+    color: colors.textMuted,
+    marginTop: 2,
+  },
+  aboutTagline: {
+    fontFamily: 'DMSans_400Regular',
+    fontSize: fontSize.sm,
+    color: colors.textMuted,
+    marginTop: spacing.xs,
+  },
+
+  // Auth Modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    justifyContent: 'flex-end',
+  },
+  modalCard: {
+    backgroundColor: colors.surface,
+    borderTopLeftRadius: radius.xl,
+    borderTopRightRadius: radius.xl,
+    padding: spacing.lg,
+    paddingTop: spacing.md,
+  },
+  handleBar: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: 'rgba(0,0,0,0.12)',
+    alignSelf: 'center',
     marginBottom: spacing.lg,
   },
-  modalTitle: { fontSize: fontSize.xl, fontWeight: '700', color: colors.text },
-  closeBtn: { fontSize: fontSize.xl, color: colors.textMuted, padding: spacing.xs },
+  modalTitle: {
+    fontFamily: 'DMSans_700Bold',
+    fontSize: fontSize.xl,
+    color: colors.text,
+    marginBottom: spacing.lg,
+  },
   authInput: {
     height: 48,
     borderRadius: radius.sm,
-    borderWidth: 1.5,
-    borderColor: colors.border,
+    borderWidth: 1,
+    borderColor: 'rgba(232,114,90,0.15)',
     paddingHorizontal: spacing.md,
-    fontSize: fontSize.lg,
+    fontFamily: 'DMSans_400Regular',
+    fontSize: fontSize.md,
     color: colors.text,
     marginBottom: spacing.md,
   },
   authSubmitBtn: {
     backgroundColor: colors.primary,
-    borderRadius: radius.sm,
+    borderRadius: radius.md,
     paddingVertical: spacing.md,
     alignItems: 'center',
     marginTop: spacing.sm,
   },
-  authSubmitBtnText: { color: '#FFFFFF', fontWeight: '700', fontSize: fontSize.lg },
+  authSubmitBtnText: {
+    fontFamily: 'DMSans_700Bold',
+    color: '#FFFFFF',
+    fontSize: fontSize.md,
+  },
   authToggle: { alignItems: 'center', marginTop: spacing.md, padding: spacing.sm },
-  authToggleText: { color: colors.primary, fontSize: fontSize.md },
-  // Premium
-  premiumActive: { fontSize: fontSize.lg, fontWeight: '700', color: colors.primary, marginBottom: spacing.xs },
-  restoreBtn: { alignItems: 'center', marginTop: spacing.md, padding: spacing.sm },
-  restoreBtnText: { color: colors.textMuted, fontSize: fontSize.sm },
-  // Export
-  exportBtn: {
-    backgroundColor: colors.primary,
-    borderRadius: radius.md,
-    padding: spacing.md,
-    marginBottom: spacing.sm,
+  authToggleText: {
+    fontFamily: 'DMSans_400Regular',
+    color: colors.primary,
+    fontSize: fontSize.sm,
   },
-  exportBtnLocked: { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border },
-  exportBtnText: { color: '#fff', fontWeight: '700', fontSize: fontSize.md },
-  exportBtnTextLocked: { color: colors.textMuted },
-  exportBtnSecondary: { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border },
-  exportBtnTextSecondary: { color: colors.primary, fontWeight: '600', fontSize: fontSize.md },
-  exportBtnSub: { fontSize: fontSize.sm, color: colors.textMuted, marginTop: 2 },
-  // About
-  aboutRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  aboutLabel: { fontSize: fontSize.md, color: colors.textMuted },
-  aboutValue: { fontSize: fontSize.md, color: colors.text, fontWeight: '600' },
 });

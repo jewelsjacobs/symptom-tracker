@@ -86,9 +86,11 @@ Onboarding completion is signaled via `AppContext` (React Context). The `useAppC
 - `AppSettings` — `{symptoms, reminderTime, hasCompletedOnboarding, accountEmail}`
 
 **Design system** (`src/theme.ts`):
-- Exports `colors`, `severity` (color array indexed by severity-1), `spacing`, `fontSize`, `radius`
-- Purple/lavender palette (`primary: #7C5CBF`, `background: #F5F3FF`)
-- All screens use `StyleSheet.create()` with these tokens
+- Exports `colors`, `severity` (color array indexed by severity-1), `spacing`, `fontSize`, `radius`, `fontWeight`
+- Warm coral palette (`primary: #E8725A`, `background: #FDF8F5`) — "Warm Topographic + Liquid Glass" theme
+- Font: DM Sans (loaded in App.tsx via `@expo-google-fonts/dm-sans`)
+- Component library in `src/components/`: GlassCard, GradientBackground, SeverityDots, SymptomIcon, BottomNav
+- Full spec: `design/specs/design-system-v2.md`
 
 ## Conventions
 
