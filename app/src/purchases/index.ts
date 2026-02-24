@@ -1,8 +1,7 @@
 import Purchases, { LOG_LEVEL, PurchasesPackage } from 'react-native-purchases';
 import { Platform } from 'react-native';
 
-// TODO: Replace with your RevenueCat iOS public API key
-const REVENUECAT_API_KEY_IOS = 'YOUR_REVENUECAT_IOS_API_KEY';
+const REVENUECAT_API_KEY_IOS = process.env.EXPO_PUBLIC_REVENUECAT_IOS_API_KEY ?? '';
 const PREMIUM_ENTITLEMENT_ID = 'premium';
 
 export function configurePurchases() {

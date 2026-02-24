@@ -16,6 +16,7 @@
     "@react-navigation/stack": "^7.7.2",
     "@supabase/supabase-js": "^2.97.0",
     "expo": "~54.0.33",
+    "expo-constants": "~18.0.13",
     "expo-dev-client": "~6.0.20",
     "expo-file-system": "~19.0.21",
     "expo-notifications": "~0.32.16",
