@@ -76,6 +76,56 @@ Before committing any code changes, always follow this sequence:
 
 > Note: A full `eas build --profile preview --platform ios` is only needed when native code changes — new native packages, plugin changes, or `app.json` native config changes. For JS/TS/asset-only changes, always use `eas update` instead.
 
+## Environment Variables
+
+### How they work in this project
+All secrets are stored in `.env` (gitignored — never committed). The app reads them via `process.env.EXPO_PUBLIC_*` at runtime in dev, and they are **baked in at build time** by EAS for preview/production builds.
+
+### Current variables
+| Variable | Used by |
+|---|---|
+| `EXPO_PUBLIC_SUPABASE_URL` | `src/supabase/client.ts` |
+| `EXPO_PUBLIC_SUPABASE_ANON_KEY` | `src/supabase/client.ts` |
+| `EXPO_PUBLIC_REVENUECAT_IOS_API_KEY` | `src/purchases/index.ts` |
+
+### Critical rules
+- **Never hardcode secrets** in source files. Always use `process.env.EXPO_PUBLIC_*`.
+- **Never commit `.env`** — it is gitignored. Use `.env.example` to document required variables.
+- **EAS must have all variables set** or the build will silently receive empty strings, causing runtime crashes (e.g. RevenueCat "Wrong API Key" error, Supabase auth failures).
+- `EXPO_PUBLIC_` prefix is required for variables to be accessible in React Native code. Variables without this prefix are only available in Node/EAS build scripts.
+
+### When you add a new environment variable
+1. Add it to `.env` locally
+2. Add a placeholder to `.env.example`
+3. Register it in EAS for ALL relevant environments:
+   ```bash
+   # Add to preview environment
+   eas env:create --name VAR_NAME --value "value" --environment preview --visibility plaintext
+
+   # Add to production environment
+   eas env:create --name VAR_NAME --value "value" --environment production --visibility plaintext
+
+   # Verify all vars are registered
+   eas env:list --environment preview
+   eas env:list --environment production
+   ```
+4. **A full rebuild is required** after adding new env vars — OTA update (`eas update`) is not sufficient since variables are baked in at build time.
+
+### Diagnosing env var problems on device
+Symptoms: app crashes on launch, "Wrong API Key" dialogs, auth failures on device but not in simulator.
+Fix:
+1. Check what EAS has: `eas env:list --environment preview`
+2. Add or update the missing var: `eas env:create` or `eas env:update`
+3. Trigger a fresh build — do NOT just run `eas update`, it won't pick up env changes.
+4. Delete the old app from iPhone completely before installing the new build.
+
+### When to use eas update vs eas build
+| Change type | Command |
+|---|---|
+| JS/TS code, styles, assets | `eas update --branch preview --message "description"` |
+| New native package, plugin, app.json native config | `eas build --profile preview --platform ios` |
+| New or changed environment variable | `eas build --profile preview --platform ios` |
+
 ## Commands
 
 ```bash
