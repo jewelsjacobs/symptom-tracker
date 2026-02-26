@@ -15,6 +15,8 @@ export const colors = {
   background:     '#FDF8F5',  // Warm cream — app background (NOT pure white)
   surface:        '#FFFFFF',  // Card surfaces — float on cream background
   surfaceGlass:   'rgba(255,255,255,0.18)',  // Liquid glass card fill
+  surfaceGlassCream: 'rgba(255,255,255,0.52)', // Glass fill on cream bg
+  borderGlassCream:  'rgba(255,255,255,0.78)', // Glass border on cream bg
 
   // --- Text ---
   text:           '#2D2926',  // Warm near-black — headlines, body text

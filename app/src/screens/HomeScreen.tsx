@@ -16,6 +16,7 @@ import { AppSettings, DailyLog, SeverityLevel } from '../types';
 import { HomeStackParamList } from '../navigation';
 import GlassCard from '../components/GlassCard';
 import GradientBackground from '../components/GradientBackground';
+import CoralButton from '../components/CoralButton';
 import SymptomIcon from '../components/SymptomIcon';
 
 type NavProp = StackNavigationProp<HomeStackParamList, 'Home'>;
@@ -181,12 +182,11 @@ export default function HomeScreen() {
 
             {/* CTA */}
             {!loggedToday ? (
-              <Pressable
+              <CoralButton
+                label="Log Today's Symptoms"
                 onPress={() => navigation.navigate('DailyLog')}
-                style={({ pressed }) => [styles.ctaButton, pressed && styles.ctaPressed]}
-              >
-                <Text style={styles.ctaText}>Log Today's Symptoms</Text>
-              </Pressable>
+                style={styles.ctaButton}
+              />
             ) : (
               <View style={styles.loggedPill}>
                 <Text style={styles.loggedText}>Logged</Text>
@@ -321,22 +321,7 @@ const styles = StyleSheet.create({
 
   // CTA
   ctaButton: {
-    backgroundColor: 'rgba(255,255,255,0.25)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.35)',
-    borderRadius: 18,
-    height: 56,
-    justifyContent: 'center',
-    alignItems: 'center',
     marginTop: spacing.sm,
-  },
-  ctaPressed: {
-    backgroundColor: 'rgba(255,255,255,0.35)',
-  },
-  ctaText: {
-    fontFamily: 'DMSans_700Bold',
-    fontSize: fontSize.md,
-    color: '#FFFFFF',
   },
   loggedPill: {
     backgroundColor: 'rgba(126,184,164,0.3)',

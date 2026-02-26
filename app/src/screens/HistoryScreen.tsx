@@ -10,12 +10,17 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
+import { BlurView } from 'expo-blur';
+import Svg, { Rect, Path } from 'react-native-svg';
 
 import { colors, severity as severityColors, spacing, fontSize, radius } from '../theme';
 import { loadAllLogs, loadSettings } from '../storage';
 import { AppSettings, DailyLog, SeverityLevel } from '../types';
 import { usePremium } from '../purchases/usePremium';
 import SymptomIcon from '../components/SymptomIcon';
+import CreamBackground from '../components/CreamBackground';
+import GlassCard from '../components/GlassCard';
+import CoralButton from '../components/CoralButton';
 
 const HISTORY_FREE_DAYS = 30;
 
@@ -103,151 +108,171 @@ export default function HistoryScreen() {
   const calDates = getLast7Dates();
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.title}>History</Text>
-        <Text style={styles.subtitle}>{logs.length} days logged</Text>
-      </View>
-
-      {/* Calendar strip */}
-      <View style={styles.calStrip}>
-        {calDates.map((date) => {
-          const log = logMap.get(date);
-          const isToday = date === today;
-          const avg = log ? avgSeverity(log) : 0;
-          const idx = Math.round(avg) - 1;
-          const fillColor = log ? severityColors[Math.max(0, Math.min(4, idx))] : undefined;
-          return (
-            <Pressable
-              key={date}
-              style={styles.calDay}
-              onPress={() => log && setSelected(log)}
-            >
-              <Text style={styles.calDayLabel}>{dayInitial(date)}</Text>
-              <View
-                style={[
-                  styles.calCircle,
-                  fillColor ? { backgroundColor: fillColor } : styles.calCircleEmpty,
-                  isToday && styles.calCircleToday,
-                ]}
-              >
-                <Text style={[styles.calDayNum, fillColor ? styles.calDayNumFilled : undefined]}>
-                  {dayNumber(date)}
-                </Text>
-              </View>
-            </Pressable>
-          );
-        })}
-      </View>
-
-      {logs.length === 0 ? (
-        <View style={styles.empty}>
-          <Text style={styles.emptyTitle}>No logs yet</Text>
-          <Text style={styles.emptyText}>
-            Start with today — it only takes 30 seconds
-          </Text>
+    <CreamBackground>
+      <SafeAreaView style={styles.container}>
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.title}>History</Text>
+          <Text style={styles.subtitle}>{logs.length} days logged</Text>
         </View>
-      ) : (
-        <FlatList
-          data={logs}
-          keyExtractor={(item) => item.date}
-          contentContainerStyle={styles.list}
-          renderItem={({ item }) => (
-            <Pressable
-              style={styles.row}
-              onPress={() => setSelected(item)}
-            >
-              <View style={[styles.accentBar, { backgroundColor: getAccentColor(item) }]} />
-              <View style={styles.rowContent}>
-                <View style={styles.rowTop}>
-                  <Text style={styles.rowDate}>
-                    {item.date === today ? 'Today' : formatFriendlyDate(item.date)}
-                  </Text>
-                  <Text style={styles.chevron}>{'\u203A'}</Text>
-                </View>
-                <View style={styles.dotsRow}>
-                  {item.entries.map((entry) => (
-                    <View
-                      key={entry.symptomId}
-                      style={[styles.dot, { backgroundColor: severityColors[entry.severity - 1] }]}
-                    />
-                  ))}
-                </View>
-                {item.note ? (
-                  <Text style={styles.notePreview} numberOfLines={1}>
-                    {item.note}
-                  </Text>
-                ) : null}
-              </View>
-            </Pressable>
-          )}
-        />
-      )}
 
-      {/* Day detail bottom sheet */}
-      {selected && settings && (
-        <Modal
-          visible={!!selected}
-          animationType="slide"
-          transparent
-          onRequestClose={() => setSelected(null)}
-        >
-          <Pressable style={styles.modalOverlay} onPress={() => setSelected(null)}>
-            <Pressable style={styles.modalCard} onPress={() => {}}>
-              <View style={styles.handleBar} />
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>{formatFullDate(selected.date)}</Text>
+        {/* Calendar strip */}
+        <GlassCard variant="cream" style={styles.calCard}>
+          <View style={styles.calStrip}>
+            {calDates.map((date) => {
+              const log = logMap.get(date);
+              const isToday = date === today;
+              const avg = log ? avgSeverity(log) : 0;
+              const idx = Math.round(avg) - 1;
+              const fillColor = log ? severityColors[Math.max(0, Math.min(4, idx))] : undefined;
+              return (
+                <Pressable
+                  key={date}
+                  style={styles.calDay}
+                  onPress={() => log && setSelected(log)}
+                >
+                  <Text style={styles.calDayLabel}>{dayInitial(date)}</Text>
+                  <View
+                    style={[
+                      styles.calCircle,
+                      fillColor ? { backgroundColor: fillColor } : styles.calCircleEmpty,
+                      isToday && !fillColor && styles.calCircleToday,
+                    ]}
+                  >
+                    <Text style={[
+                      styles.calDayNum,
+                      fillColor ? styles.calDayNumFilled : undefined,
+                      isToday && !fillColor ? styles.calDayNumToday : undefined,
+                    ]}>
+                      {dayNumber(date)}
+                    </Text>
+                  </View>
+                </Pressable>
+              );
+            })}
+          </View>
+        </GlassCard>
+
+        {logs.length === 0 ? (
+          <View style={styles.empty}>
+            <GlassCard variant="cream" style={styles.emptyIconCard}>
+              <View style={styles.emptyIconWrap}>
+                <Svg width={28} height={28} viewBox="0 0 24 24" fill="none">
+                  <Rect x="3" y="4" width="18" height="18" rx="3" stroke={colors.primary} strokeWidth={1.8} fill="none" />
+                  <Path d="M3 9h18" stroke={colors.primary} strokeWidth={1.8} />
+                  <Path d="M8 2v4M16 2v4" stroke={colors.primary} strokeWidth={1.8} strokeLinecap="round" />
+                </Svg>
               </View>
-              <ScrollView showsVerticalScrollIndicator={false}>
-                {selected.entries.map((entry) => {
-                  const symptom = settings.symptoms.find((s) => s.id === entry.symptomId);
-                  const name = symptom?.name ?? 'Unknown symptom';
-                  return (
-                    <View key={entry.symptomId} style={styles.modalRow}>
-                      <SymptomIcon name={name} size={14} color={colors.text} showBox />
-                      <Text style={[styles.modalSymptomName, !symptom && styles.modalSymptomMissing]}>
-                        {name}
-                      </Text>
-                      <View style={styles.modalDotsRow}>
-                        {([1, 2, 3, 4, 5] as SeverityLevel[]).map((level) => (
+            </GlassCard>
+            <Text style={styles.emptyTitle}>No logs yet</Text>
+            <Text style={styles.emptyText}>
+              Start with today — it only takes 30 seconds
+            </Text>
+          </View>
+        ) : (
+          <FlatList
+            data={logs}
+            keyExtractor={(item) => item.date}
+            contentContainerStyle={styles.list}
+            renderItem={({ item }) => (
+              <Pressable onPress={() => setSelected(item)}>
+                <GlassCard variant="cream" style={styles.rowCard}>
+                  <View style={styles.rowInner}>
+                    <View style={[styles.accentBar, { backgroundColor: getAccentColor(item) }]} />
+                    <View style={styles.rowContent}>
+                      <View style={styles.rowTop}>
+                        <Text style={styles.rowDate}>
+                          {item.date === today ? 'Today' : formatFriendlyDate(item.date)}
+                        </Text>
+                        <Text style={styles.chevron}>{'\u203A'}</Text>
+                      </View>
+                      <View style={styles.dotsRow}>
+                        {item.entries.map((entry) => (
                           <View
-                            key={level}
-                            style={[
-                              styles.modalDot,
-                              {
-                                backgroundColor:
-                                  level <= entry.severity
-                                    ? severityColors[entry.severity - 1]
-                                    : 'rgba(0,0,0,0.08)',
-                              },
-                            ]}
+                            key={entry.symptomId}
+                            style={[styles.dot, { backgroundColor: severityColors[entry.severity - 1] }]}
                           />
                         ))}
                       </View>
+                      {item.note ? (
+                        <Text style={styles.notePreview} numberOfLines={1}>
+                          {item.note}
+                        </Text>
+                      ) : null}
                     </View>
-                  );
-                })}
-                {selected.note ? (
-                  <View style={styles.modalNote}>
-                    <Text style={styles.modalNoteLabel}>NOTE</Text>
-                    <Text style={styles.modalNoteText}>{selected.note}</Text>
                   </View>
-                ) : null}
-              </ScrollView>
-              <Pressable style={styles.closeButton} onPress={() => setSelected(null)}>
-                <Text style={styles.closeButtonText}>Close</Text>
+                </GlassCard>
+              </Pressable>
+            )}
+          />
+        )}
+
+        {/* Day detail bottom sheet */}
+        {selected && settings && (
+          <Modal
+            visible={!!selected}
+            animationType="slide"
+            transparent
+            onRequestClose={() => setSelected(null)}
+          >
+            <Pressable style={styles.modalOverlay} onPress={() => setSelected(null)}>
+              <Pressable style={styles.modalCard} onPress={() => {}}>
+                <BlurView intensity={80} tint="light" style={styles.modalBlur}>
+                  <View style={styles.modalInner}>
+                    <View style={styles.handleBar} />
+                    <View style={styles.modalHeader}>
+                      <Text style={styles.modalTitle}>{formatFullDate(selected.date)}</Text>
+                    </View>
+                    <ScrollView showsVerticalScrollIndicator={false}>
+                      {selected.entries.map((entry) => {
+                        const symptom = settings.symptoms.find((s) => s.id === entry.symptomId);
+                        const name = symptom?.name ?? 'Unknown symptom';
+                        return (
+                          <View key={entry.symptomId} style={styles.modalRow}>
+                            <SymptomIcon name={name} size={14} color={colors.text} showBox />
+                            <Text style={[styles.modalSymptomName, !symptom && styles.modalSymptomMissing]}>
+                              {name}
+                            </Text>
+                            <View style={styles.modalDotsRow}>
+                              {([1, 2, 3, 4, 5] as SeverityLevel[]).map((level) => (
+                                <View
+                                  key={level}
+                                  style={[
+                                    styles.modalDot,
+                                    {
+                                      backgroundColor:
+                                        level <= entry.severity
+                                          ? severityColors[entry.severity - 1]
+                                          : 'rgba(0,0,0,0.08)',
+                                    },
+                                  ]}
+                                />
+                              ))}
+                            </View>
+                          </View>
+                        );
+                      })}
+                      {selected.note ? (
+                        <View style={styles.modalNote}>
+                          <Text style={styles.modalNoteLabel}>NOTE</Text>
+                          <Text style={styles.modalNoteText}>{selected.note}</Text>
+                        </View>
+                      ) : null}
+                    </ScrollView>
+                    <CoralButton label="Close" onPress={() => setSelected(null)} />
+                  </View>
+                </BlurView>
               </Pressable>
             </Pressable>
-          </Pressable>
-        </Modal>
-      )}
-    </SafeAreaView>
+          </Modal>
+        )}
+      </SafeAreaView>
+    </CreamBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
+  container: { flex: 1 },
   header: {
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.lg,
@@ -255,17 +280,21 @@ const styles = StyleSheet.create({
   },
   title: {
     fontFamily: 'DMSans_700Bold',
-    fontSize: fontSize.xxl,
+    fontSize: fontSize.xxxl,
     color: colors.text,
   },
   subtitle: {
     fontFamily: 'DMSans_400Regular',
     fontSize: fontSize.md,
-    color: colors.textMuted,
+    color: colors.sage,
     marginTop: 2,
   },
 
   // Calendar strip
+  calCard: {
+    marginHorizontal: spacing.md,
+    marginBottom: spacing.md,
+  },
   calStrip: {
     flexDirection: 'row',
     justifyContent: 'space-around',
@@ -292,6 +321,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.04)',
   },
   calCircleToday: {
+    backgroundColor: 'transparent',
     borderWidth: 2,
     borderColor: colors.primary,
   },
@@ -303,6 +333,10 @@ const styles = StyleSheet.create({
   calDayNumFilled: {
     color: '#FFFFFF',
   },
+  calDayNumToday: {
+    color: colors.primary,
+    fontFamily: 'DMSans_700Bold',
+  },
 
   // Empty state
   empty: {
@@ -310,6 +344,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: spacing.xl,
+  },
+  emptyIconCard: {
+    marginBottom: spacing.md,
+  },
+  emptyIconWrap: {
+    padding: spacing.md,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   emptyTitle: {
     fontFamily: 'DMSans_700Bold',
@@ -326,18 +368,13 @@ const styles = StyleSheet.create({
 
   // List
   list: { paddingVertical: spacing.xs, paddingBottom: 100 },
-  row: {
-    flexDirection: 'row',
-    backgroundColor: colors.surface,
+  rowCard: {
     marginHorizontal: spacing.md,
     marginVertical: spacing.xs,
-    borderRadius: radius.md,
+  },
+  rowInner: {
+    flexDirection: 'row',
     overflow: 'hidden',
-    shadowColor: colors.shadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 1,
-    shadowRadius: 8,
-    elevation: 2,
   },
   accentBar: { width: 4 },
   rowContent: { flex: 1, padding: spacing.md },
@@ -373,12 +410,20 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalCard: {
-    backgroundColor: colors.surface,
     borderTopLeftRadius: radius.xl,
     borderTopRightRadius: radius.xl,
+    overflow: 'hidden',
+    maxHeight: '70%',
+  },
+  modalBlur: {
+    borderTopLeftRadius: radius.xl,
+    borderTopRightRadius: radius.xl,
+    overflow: 'hidden',
+  },
+  modalInner: {
+    backgroundColor: 'rgba(255,255,255,0.92)',
     padding: spacing.lg,
     paddingTop: spacing.md,
-    maxHeight: '70%',
   },
   handleBar: {
     width: 36,
@@ -419,7 +464,7 @@ const styles = StyleSheet.create({
   modalNote: {
     marginTop: spacing.md,
     padding: spacing.md,
-    backgroundColor: colors.background,
+    backgroundColor: 'rgba(253,248,245,0.6)',
     borderRadius: radius.sm,
   },
   modalNoteLabel: {
@@ -434,18 +479,5 @@ const styles = StyleSheet.create({
     fontSize: fontSize.md,
     color: colors.text,
     lineHeight: 22,
-  },
-  closeButton: {
-    backgroundColor: colors.primary,
-    borderRadius: radius.md,
-    height: 48,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: spacing.lg,
-  },
-  closeButtonText: {
-    fontFamily: 'DMSans_700Bold',
-    fontSize: fontSize.md,
-    color: '#FFFFFF',
   },
 });

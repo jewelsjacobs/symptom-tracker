@@ -108,7 +108,7 @@ export default function DailyLogScreen() {
         {/* Header */}
         <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>
           <Pressable onPress={() => navigation.goBack()} hitSlop={12}>
-            <Text style={styles.backText}>Back</Text>
+            <Text style={styles.backText}>{'\u2039'} Back</Text>
           </Pressable>
           <View style={styles.headerCenter}>
             <Text style={styles.headerTitle}>Today's Log</Text>

@@ -9,14 +9,19 @@
     "newArchEnabled": true,
     "splash": {
       "image": "./assets/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#F5F3FF"
+      "resizeMode": "cover",
+      "backgroundColor": "#E8725A"
     },
     "ios": {
       "bundleIdentifier": "com.julia.ebb",
       "supportsTablet": false,
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
+      },
+      "splash": {
+        "image": "./assets/splash-icon.png",
+        "resizeMode": "cover",
+        "backgroundColor": "#E8725A"
       }
     },
     "android": {
@@ -36,7 +41,7 @@
         "expo-notifications",
         {
           "icon": "./assets/icon.png",
-          "color": "#7C5CBF"
+          "color": "#E8725A"
         }
       ],
       "expo-font"
