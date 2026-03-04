@@ -4,6 +4,7 @@ import {
   StyleSheet,
   ScrollView,
   Pressable,
+  useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -90,7 +91,6 @@ function rangeToDays(range: Range): number {
   }
 }
 
-const CHART_W = 280;
 const CHART_H = 60;
 const CHART_PAD = 8; // horizontal inset so edge dots aren't clipped
 
@@ -131,6 +131,9 @@ export default function TrendsScreen() {
   const [range, setRange] = useState<Range>('7D');
   const { premium } = usePremium();
   const router = useRouter();
+  const { width: screenWidth } = useWindowDimensions();
+  // Chart fills the card: screen - content padding (md*2) - card padding (lg*2)
+  const CHART_W = screenWidth - spacing.md * 2 - spacing.lg * 2;
 
   useFocusEffect(
     useCallback(() => {
@@ -455,7 +458,6 @@ const styles = StyleSheet.create({
 
   // Chart
   chartContainer: {
-    alignItems: 'center',
     marginBottom: spacing.xs,
   },
   xLabels: {
