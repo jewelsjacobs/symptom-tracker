@@ -40,12 +40,12 @@ function daysAgoDateString(daysAgo: number): string {
   return `${y}-${m}-${day}`;
 }
 
-function getLast7DayInitials(): string[] {
-  const initials = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+function getLast7DayLabels(): string[] {
+  const labels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   return Array.from({ length: 7 }, (_, i) => {
     const d = new Date();
     d.setDate(d.getDate() - (6 - i));
-    return initials[d.getDay()];
+    return labels[d.getDay()];
   });
 }
 
@@ -131,7 +131,7 @@ export default function HomeScreen() {
               <View style={styles.cardPad}>
                 <EbbText type="caption" style={styles.sectionLabel}>THIS WEEK</EbbText>
                 {settings.symptoms.slice(0, 3).map((symptom) => {
-                  const dayInitials = getLast7DayInitials();
+                  const dayLabels = getLast7DayLabels();
                   const symptomColor = getSymptomColor(symptom.name);
                   return (
                     <View key={symptom.id} style={styles.trendSymptomRow}>
@@ -171,7 +171,7 @@ export default function HomeScreen() {
                                 )}
                               </View>
                               <EbbText type="footnote" style={[styles.trendDayLabel, isToday && styles.trendDayLabelToday]}>
-                                {dayInitials[i]}
+                                {dayLabels[i]}
                               </EbbText>
                             </View>
                           );
