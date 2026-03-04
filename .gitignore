@@ -13,3 +13,4 @@ node_modules/
 
 # backups
 *.bk*
+assets/_backup_original/
