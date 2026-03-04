@@ -35,50 +35,66 @@ function daysAgoDateString(n: number): string {
   ].join('-');
 }
 
-function dayLabel3Letter(dateStr: string): string {
-  const [year, month, day] = dateStr.split('-').map(Number);
-  const d = new Date(year, month - 1, day);
-  return ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][d.getDay()];
+const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+function parseDate(dateStr: string): Date {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return new Date(y, m - 1, d);
 }
 
-function shortDateLabel(dateStr: string): string {
-  const [year, month, day] = dateStr.split('-').map(Number);
-  const d = new Date(year, month - 1, day);
-  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  return `${monthNames[d.getMonth()]} ${d.getDate()}`;
-}
-
-function monthLabel(dateStr: string, includeYear: boolean): string {
-  const [year, month] = dateStr.split('-').map(Number);
-  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  if (includeYear) return `${monthNames[month - 1]} '${String(year).slice(2)}`;
-  return monthNames[month - 1];
-}
-
-/** Generate smart x-axis labels based on range */
+/**
+ * Generate x-axis labels modeled after Apple Health:
+ * - Week (7D): 3-letter day names for each of the 7 days
+ * - Month (30D): day-of-month numbers, evenly spaced (~5 labels)
+ * - 3 Months (90D): unique month names across the range
+ * - All: unique month names, with year suffix if spanning multiple years
+ */
 function getXAxisLabels(dates: string[], range: Range): string[] {
   if (dates.length === 0) return [];
-  // Fewer labels for ranges with wider text
-  const maxLabels = range === '30D' ? 5 : range === '90D' || range === 'All' ? 5 : 7;
-  const labelCount = Math.min(maxLabels, dates.length);
-  const labelIndices = Array.from({ length: labelCount }, (_, i) =>
-    Math.round((i / (labelCount - 1)) * (dates.length - 1))
-  );
-
-  // Check if dates span multiple years
-  const firstYear = dates[0]?.split('-')[0];
-  const lastYear = dates[dates.length - 1]?.split('-')[0];
-  const multiYear = firstYear !== lastYear;
 
   switch (range) {
-    case '7D':
-      return labelIndices.map((idx) => dayLabel3Letter(dates[idx]));
-    case '30D':
-      return labelIndices.map((idx) => shortDateLabel(dates[idx]));
+    case '7D': {
+      // One label per day, 3-letter day name
+      return dates.map((d) => DAY_NAMES[parseDate(d).getDay()]);
+    }
+    case '30D': {
+      // ~5 evenly spaced labels showing day-of-month number
+      const count = Math.min(5, dates.length);
+      return Array.from({ length: count }, (_, i) => {
+        const idx = Math.round((i / (count - 1)) * (dates.length - 1));
+        const d = parseDate(dates[idx]);
+        return String(d.getDate());
+      });
+    }
     case '90D':
-      return labelIndices.map((idx) => monthLabel(dates[idx], multiYear));
-    case 'All':
-      return labelIndices.map((idx) => monthLabel(dates[idx], multiYear));
+    case 'All': {
+      // Collect unique months in order, show abbreviated month name
+      const firstDate = parseDate(dates[0]);
+      const lastDate = parseDate(dates[dates.length - 1]);
+      const multiYear = firstDate.getFullYear() !== lastDate.getFullYear();
+
+      const seen = new Set<string>();
+      const uniqueMonths: { label: string; index: number }[] = [];
+      dates.forEach((dateStr, i) => {
+        const d = parseDate(dateStr);
+        const key = `${d.getFullYear()}-${d.getMonth()}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          const name = MONTH_NAMES[d.getMonth()];
+          const label = multiYear ? `${name} '${String(d.getFullYear()).slice(2)}` : name;
+          uniqueMonths.push({ label, index: i });
+        }
+      });
+
+      // If too many months, evenly sample ~5-6
+      if (uniqueMonths.length <= 6) return uniqueMonths.map((m) => m.label);
+      const maxLabels = 6;
+      return Array.from({ length: maxLabels }, (_, i) => {
+        const idx = Math.round((i / (maxLabels - 1)) * (uniqueMonths.length - 1));
+        return uniqueMonths[idx].label;
+      });
+    }
   }
 }
 
