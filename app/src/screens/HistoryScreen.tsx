@@ -231,7 +231,6 @@ export default function HistoryScreen() {
               <Pressable style={styles.modalCard} onPress={() => {}}>
                 <BlurView intensity={80} tint="light" style={styles.modalBlur}>
                   <View style={styles.modalInner}>
-                    <View style={styles.handleBar} />
                     <View style={styles.modalHeader}>
                       <EbbText type="headline" style={styles.modalTitle}>{formatFullDate(selected.date)}</EbbText>
                     </View>
@@ -435,7 +434,7 @@ const styles = StyleSheet.create({
   modalInner: {
     backgroundColor: 'rgba(255,255,255,0.92)',
     padding: spacing.lg,
-    paddingTop: spacing.md,
+    paddingTop: spacing.lg,
   },
   handleBar: {
     width: 36,
