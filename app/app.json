@@ -38,6 +38,7 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
+      "./plugins/withOpaqueTabBar",
       "expo-splash-screen",
       "@react-native-community/datetimepicker",
       [
