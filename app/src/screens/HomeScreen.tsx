@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import {
   View,
   StyleSheet,
@@ -57,26 +57,43 @@ export default function HomeScreen() {
   const [last7Logs, setLast7Logs] = useState<Map<string, DailyLog>>(new Map());
   const today = getTodayDateString();
 
+  // Track whether initial load has completed to avoid showing empty GradientBackground
+  // on subsequent focus events (which confuses iOS scroll-edge detection on the tab bar)
+  const hasLoadedOnce = useRef(false);
+
   useFocusEffect(
     useCallback(() => {
+      let cancelled = false;
       (async () => {
-        const s = await loadSettings();
-        setSettings(s);
-        const log = await loadLog(today);
-        setTodayLog(log);
-        const allLogs = await loadAllLogs();
+        // Load all data before updating any state — this prevents
+        // multiple intermediate re-renders that cause iOS to
+        // re-evaluate scroll-edge transparency on the native tab bar
+        const [s, log, allLogs] = await Promise.all([
+          loadSettings(),
+          loadLog(today),
+          loadAllLogs(),
+        ]);
+        if (cancelled) return;
         const last7Map = new Map<string, DailyLog>();
         for (let i = 0; i < 7; i++) {
           const dateStr = daysAgoDateString(i);
           const found = allLogs.find((l) => l.date === dateStr);
           if (found) last7Map.set(dateStr, found);
         }
+        // Batch all state updates together in one render cycle
+        setSettings(s);
+        setTodayLog(log);
         setLast7Logs(last7Map);
+        hasLoadedOnce.current = true;
       })();
+      return () => { cancelled = true; };
     }, [today])
   );
 
-  if (!settings) return null;
+  // After the first load, keep showing the previous content while refreshing
+  // (prevents the empty GradientBackground flash that confuses the tab bar)
+  if (!settings && !hasLoadedOnce.current) return <GradientBackground />;
+  if (!settings) return <GradientBackground />;
 
   const hasSymptoms = settings.symptoms.length > 0;
   const loggedToday = todayLog !== null;
@@ -88,9 +105,13 @@ export default function HomeScreen() {
 
   return (
     <GradientBackground>
+      <View style={{ flex: 1 }} collapsable={false}>
       <ScrollView
         contentContainerStyle={[styles.content, { paddingTop: insets.top + spacing.md, paddingBottom: 120 }]}
         showsVerticalScrollIndicator={false}
+        scrollIndicatorInsets={{ bottom: 0 }}
+        automaticallyAdjustsScrollIndicatorInsets={false}
+        contentInsetAdjustmentBehavior="never"
       >
         {/* Greeting — stays white on gradient */}
         <EbbText type="largeTitle" style={styles.greetingName}>{getGreeting()}</EbbText>
@@ -223,6 +244,7 @@ export default function HomeScreen() {
           </>
         )}
       </ScrollView>
+      </View>
     </GradientBackground>
   );
 }

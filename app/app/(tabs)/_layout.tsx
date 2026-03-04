@@ -2,8 +2,11 @@ import React from 'react';
 import { Platform } from 'react-native';
 import { Tabs } from 'expo-router';
 import { NativeTabs, Icon, Label } from 'expo-router/unstable-native-tabs';
+import { enableFreeze } from 'react-native-screens';
 import { colors } from '../../src/theme';
 import BottomNav from '../../src/components/BottomNav';
+
+enableFreeze(true);
 
 /**
  * ErrorBoundary that catches NativeTabs crashes and falls back to JS tabs.
@@ -47,6 +50,10 @@ function FallbackTabs() {
 function NativeTabsLayout() {
   return (
     <NativeTabs
+      disableTransparentOnScrollEdge={true}
+      blurEffect="systemThickMaterialLight"
+      backgroundColor="#FDF8F5"
+      screenOptions={{ freezeOnBlur: true }}
       tintColor={colors.primary}
       iconColor={{
         default: '#7A706B',
@@ -57,7 +64,7 @@ function NativeTabsLayout() {
         selected: { color: colors.primary },
       }}
     >
-      <NativeTabs.Trigger name="home">
+      <NativeTabs.Trigger name="home" disableTransparentOnScrollEdge>
         <Icon sf={{ default: 'house', selected: 'house.fill' }} />
         <Label>Home</Label>
       </NativeTabs.Trigger>

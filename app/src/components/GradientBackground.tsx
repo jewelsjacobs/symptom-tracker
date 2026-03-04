@@ -13,7 +13,7 @@ type Props = {
  */
 export default function GradientBackground({ children }: Props) {
   return (
-    <View style={styles.container}>
+    <View style={{ flex: 1, backgroundColor: '#F5A962' }}>
       <LinearGradient
         colors={['#F5A962', '#E8725A', '#C2553F']}
         start={{ x: 0.2, y: 0 }}

@@ -83,7 +83,7 @@ export default function DailyLogScreen() {
       }));
       const log: DailyLog = { date: today, entries, note: note.trim() || undefined };
       await saveLog(log);
-      router.back();
+      setTimeout(() => router.back(), 50);
     } catch (e) {
       Alert.alert('Error', 'Failed to save your log. Please try again.');
       console.error(e);
@@ -265,12 +265,11 @@ const styles = StyleSheet.create({
     fontWeight: '400',
     color: colors.text,
     minHeight: 80,
-    paddingTop: 0,
     backgroundColor: '#F5F1EE',
     borderWidth: 1,
     borderColor: '#E5E0DD',
     borderRadius: 12,
-    padding: 16,
+    padding: 12,
   },
   charCount: {
     color: colors.textMuted,
