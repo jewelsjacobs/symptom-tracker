@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   StyleSheet,
@@ -44,6 +44,7 @@ export default function DailyLogScreen() {
   const [severities, setSeverities] = useState<Record<string, SeverityLevel>>({});
   const [note, setNote] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const scrollViewRef = useRef<ScrollView>(null);
 
   useEffect(() => {
     (async () => {
@@ -121,6 +122,7 @@ export default function DailyLogScreen() {
         </View>
 
         <ScrollView
+          ref={scrollViewRef}
           contentContainerStyle={[styles.content, { paddingBottom: 120 }]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
@@ -165,6 +167,12 @@ export default function DailyLogScreen() {
                 multiline
                 numberOfLines={3}
                 textAlignVertical="top"
+                onFocus={() => {
+                  // Scroll the note field into view when keyboard appears
+                  setTimeout(() => {
+                    scrollViewRef.current?.scrollToEnd({ animated: true });
+                  }, 300);
+                }}
               />
               <EbbText type="caption" style={styles.charCount}>{note.length}/500</EbbText>
             </View>
