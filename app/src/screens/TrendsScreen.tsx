@@ -165,8 +165,14 @@ export default function TrendsScreen() {
 
   if (!settings) return null;
 
-  const days = rangeToDays(range);
-  const dates = Array.from({ length: Math.min(days, 365) }, (_, i) => daysAgoDateString(Math.min(days, 365) - 1 - i));
+  // Generate dates only for the range that has data, not empty space
+  const maxDays = rangeToDays(range);
+  const allDatesInRange = Array.from({ length: Math.min(maxDays, 365) }, (_, i) => daysAgoDateString(Math.min(maxDays, 365) - 1 - i));
+
+  // Find the earliest date that has a log within this range
+  const firstLoggedIdx = allDatesInRange.findIndex((d) => logMap.has(d));
+  // Trim to only show from the first logged date to today
+  const dates = firstLoggedIdx >= 0 ? allDatesInRange.slice(firstLoggedIdx) : allDatesInRange;
 
   function getSeverity(symptomId: string, date: string): SeverityLevel | null {
     const log = logMap.get(date);
