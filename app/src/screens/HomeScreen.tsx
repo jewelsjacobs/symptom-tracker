@@ -1,31 +1,34 @@
 import React, { useCallback, useState } from 'react';
 import {
   View,
-  Text,
   StyleSheet,
   ScrollView,
   Pressable,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
-import { StackNavigationProp } from '@react-navigation/stack';
+import { useFocusEffect } from 'expo-router';
+import { useRouter } from 'expo-router';
 
-import { colors, severity as severityColors, spacing, fontSize, radius, fontWeight } from '../theme';
+import { colors, spacing, radius, getSymptomColor } from '../theme';
 import { loadSettings, loadLog, loadAllLogs, getTodayDateString } from '../storage';
 import { AppSettings, DailyLog, SeverityLevel } from '../types';
-import { HomeStackParamList } from '../navigation';
-import GlassCard from '../components/GlassCard';
 import GradientBackground from '../components/GradientBackground';
-import CoralButton from '../components/CoralButton';
 import SymptomIcon from '../components/SymptomIcon';
+import EbbText from '../components/EbbText';
 
-type NavProp = StackNavigationProp<HomeStackParamList, 'Home'>;
+/** Convert hex color to rgba string at given opacity */
+function hexToRgba(hex: string, opacity: number): string {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r},${g},${b},${opacity})`;
+}
 
 function getGreeting(): string {
   const h = new Date().getHours();
-  if (h < 12) return 'Good morning,';
-  if (h < 17) return 'Good afternoon,';
-  return 'Good evening,';
+  if (h < 12) return 'Good morning';
+  if (h < 17) return 'Good afternoon';
+  return 'Good evening';
 }
 
 function daysAgoDateString(daysAgo: number): string {
@@ -47,7 +50,7 @@ function getLast7DayInitials(): string[] {
 }
 
 export default function HomeScreen() {
-  const navigation = useNavigation<NavProp>();
+  const router = useRouter();
   const insets = useSafeAreaInsets();
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [todayLog, setTodayLog] = useState<DailyLog | null>(null);
@@ -86,34 +89,41 @@ export default function HomeScreen() {
   return (
     <GradientBackground>
       <ScrollView
-        contentContainerStyle={[styles.content, { paddingTop: insets.top + spacing.lg, paddingBottom: 120 }]}
+        contentContainerStyle={[styles.content, { paddingTop: insets.top + spacing.md, paddingBottom: 120 }]}
         showsVerticalScrollIndicator={false}
       >
-        {/* Greeting */}
-        <Text style={styles.greetingSub}>{getGreeting()}</Text>
-        <Text style={styles.greetingName}>Julia</Text>
+        {/* Greeting — stays white on gradient */}
+        <EbbText type="largeTitle" style={styles.greetingName}>{getGreeting()}</EbbText>
 
         {!hasSymptoms ? (
-          <GlassCard style={styles.cardSpacing}>
+          <View style={[styles.whiteCard, styles.cardSpacing]}>
             <View style={styles.cardPad}>
-              <Text style={styles.emptyText}>
+              <EbbText type="body" style={styles.emptyText}>
                 No symptoms set up yet.{'\n'}Go to Settings to add some.
-              </Text>
+              </EbbText>
             </View>
-          </GlassCard>
+          </View>
         ) : (
           <>
             {/* This Week trend card */}
-            <GlassCard style={styles.cardSpacing}>
+            <View style={[styles.whiteCard, styles.cardSpacing]}>
               <View style={styles.cardPad}>
-                <Text style={styles.sectionLabel}>THIS WEEK</Text>
+                <EbbText type="caption" style={styles.sectionLabel}>THIS WEEK</EbbText>
                 {settings.symptoms.slice(0, 3).map((symptom) => {
                   const dayInitials = getLast7DayInitials();
+                  const symptomColor = getSymptomColor(symptom.name);
                   return (
                     <View key={symptom.id} style={styles.trendSymptomRow}>
                       <View style={styles.trendHeader}>
-                        <SymptomIcon name={symptom.name} size={14} color="rgba(255,255,255,0.8)" showBox />
-                        <Text style={styles.trendSymptomName}>{symptom.name}</Text>
+                        <SymptomIcon
+                          name={symptom.name}
+                          size={22}
+                          color={symptomColor}
+                          showBox
+                          boxSize={34}
+                          boxColor={hexToRgba(symptomColor, 0.15)}
+                        />
+                        <EbbText type="footnote" style={styles.trendSymptomName}>{symptom.name}</EbbText>
                       </View>
                       <View style={styles.trendRow}>
                         {Array.from({ length: 7 }, (_, i) => {
@@ -123,6 +133,9 @@ export default function HomeScreen() {
                           const isToday = i === 6;
                           return (
                             <View key={i} style={styles.trendCell}>
+                              {sev && (
+                                <EbbText type="caption" style={styles.barValueLabel}>{sev}</EbbText>
+                              )}
                               <View style={styles.barTrack}>
                                 {sev && (
                                   <View
@@ -130,14 +143,15 @@ export default function HomeScreen() {
                                       styles.barFill,
                                       {
                                         height: `${(sev / 5) * 100}%`,
-                                        backgroundColor: severityColors[sev - 1],
+                                        backgroundColor: symptomColor,
                                       },
                                     ]}
                                   />
                                 )}
                               </View>
-                              <Text style={styles.trendDayLabel}>{dayInitials[i]}</Text>
-                              {isToday && <View style={styles.todayDot} />}
+                              <EbbText type="footnote" style={[styles.trendDayLabel, isToday && styles.trendDayLabelToday]}>
+                                {dayInitials[i]}
+                              </EbbText>
                             </View>
                           );
                         })}
@@ -146,18 +160,26 @@ export default function HomeScreen() {
                   );
                 })}
               </View>
-            </GlassCard>
+            </View>
 
             {/* Today's Symptoms summary */}
-            <GlassCard style={styles.cardSpacing}>
+            <View style={[styles.whiteCard, styles.cardSpacing]}>
               <View style={styles.cardPad}>
-                <Text style={styles.sectionLabel}>TODAY'S SYMPTOMS</Text>
+                <EbbText type="caption" style={styles.sectionLabel}>TODAY'S SYMPTOMS</EbbText>
                 {settings.symptoms.map((symptom) => {
                   const sev = todayLog ? getSeverityForSymptom(todayLog, symptom.id) : null;
+                  const symptomColor = getSymptomColor(symptom.name);
                   return (
                     <View key={symptom.id} style={styles.symptomRow}>
-                      <SymptomIcon name={symptom.name} size={14} color="rgba(255,255,255,0.8)" showBox />
-                      <Text style={styles.symptomName}>{symptom.name}</Text>
+                      <SymptomIcon
+                        name={symptom.name}
+                        size={22}
+                        color={symptomColor}
+                        showBox
+                        boxSize={34}
+                        boxColor={hexToRgba(symptomColor, 0.15)}
+                      />
+                      <EbbText type="footnote" style={styles.symptomName}>{symptom.name}</EbbText>
                       <View style={styles.barTrackWide}>
                         {sev && (
                           <View
@@ -165,31 +187,37 @@ export default function HomeScreen() {
                               styles.barFillHoriz,
                               {
                                 width: `${(sev / 5) * 100}%`,
-                                backgroundColor: severityColors[sev - 1],
+                                backgroundColor: symptomColor,
                               },
                             ]}
                           />
                         )}
                       </View>
-                      <Text style={styles.scoreText}>
-                        {sev ?? '-'}
-                      </Text>
+                      {sev != null && (
+                        <EbbText type="subhead" style={styles.scoreText}>
+                          {sev}
+                        </EbbText>
+                      )}
                     </View>
                   );
                 })}
               </View>
-            </GlassCard>
+            </View>
 
             {/* CTA */}
             {!loggedToday ? (
-              <CoralButton
-                label="Log Today's Symptoms"
-                onPress={() => navigation.navigate('DailyLog')}
-                style={styles.ctaButton}
-              />
+              <Pressable
+                onPress={() => router.push('/home/daily-log')}
+                style={({ pressed }) => [
+                  styles.ctaButton,
+                  pressed && styles.ctaButtonPressed,
+                ]}
+              >
+                <EbbText type="button" style={styles.ctaButtonText}>Log Today's Symptoms</EbbText>
+              </Pressable>
             ) : (
               <View style={styles.loggedPill}>
-                <Text style={styles.loggedText}>Logged</Text>
+                <EbbText type="button" style={styles.loggedText}>Logged</EbbText>
               </View>
             )}
           </>
@@ -201,44 +229,56 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   content: {
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: spacing.md,
   },
   greetingSub: {
-    fontFamily: 'DMSans_400Regular',
-    fontSize: fontSize.md,
-    color: 'rgba(255,255,255,0.65)',
+    color: 'rgba(255,255,255,0.7)',
+    textShadowColor: 'rgba(0,0,0,0.15)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
   greetingName: {
-    fontFamily: 'DMSans_700Bold',
-    fontSize: 32,
     color: '#FFFFFF',
-    marginBottom: spacing.lg,
+    marginBottom: spacing.sm + 4,
+    textShadowColor: 'rgba(0,0,0,0.15)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
-  sectionLabel: {
-    fontFamily: 'DMSans_600SemiBold',
-    fontSize: fontSize.xs,
-    color: 'rgba(255,255,255,0.6)',
-    letterSpacing: 1.2,
-    textTransform: 'uppercase',
-    marginBottom: spacing.md,
+
+  // Solid white card — replaces GlassCard on gradient screens
+  whiteCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: radius.lg,
+    shadowColor: 'rgba(0,0,0,0.08)',
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 16,
+    shadowOpacity: 1,
+    elevation: 4,
   },
   cardSpacing: {
     marginBottom: spacing.md,
   },
   cardPad: {
-    padding: spacing.lg,
+    padding: spacing.md,
+  },
+
+  // Section labels — dark on white cards
+  sectionLabel: {
+    color: colors.textMuted,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+    marginBottom: spacing.sm + 2,
+    fontWeight: '600',
   },
   emptyText: {
-    fontFamily: 'DMSans_400Regular',
-    fontSize: fontSize.md,
-    color: 'rgba(255,255,255,0.7)',
+    color: colors.textMuted,
     textAlign: 'center',
     lineHeight: 22,
   },
 
   // Trend card
   trendSymptomRow: {
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm + 2,
   },
   trendHeader: {
     flexDirection: 'row',
@@ -247,25 +287,29 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   trendSymptomName: {
-    fontFamily: 'DMSans_600SemiBold',
-    fontSize: fontSize.sm,
-    color: 'rgba(255,255,255,0.85)',
+    fontWeight: '600',
+    color: colors.text,
   },
   trendRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-end',
-    height: 40,
+    height: 48,
   },
   trendCell: {
     flex: 1,
     alignItems: 'center',
   },
+  barValueLabel: {
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: 2,
+  },
   barTrack: {
     width: 8,
-    height: 32,
+    height: 26,
     borderRadius: 4,
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    backgroundColor: '#E5E0DD',
     justifyContent: 'flex-end',
     overflow: 'hidden',
   },
@@ -274,17 +318,12 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   trendDayLabel: {
-    fontFamily: 'DMSans_500Medium',
-    fontSize: 10,
-    color: 'rgba(255,255,255,0.5)',
+    color: colors.textMuted,
     marginTop: 3,
   },
-  todayDot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: '#FFFFFF',
-    marginTop: 2,
+  trendDayLabelToday: {
+    fontWeight: '700',
+    color: colors.primary,
   },
 
   // Symptom summary
@@ -295,38 +334,52 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
   },
   symptomName: {
-    fontFamily: 'DMSans_500Medium',
-    fontSize: fontSize.sm,
-    color: '#FFFFFF',
+    fontWeight: '500',
+    color: colors.text,
     width: 80,
   },
   barTrackWide: {
     flex: 1,
     height: 6,
     borderRadius: 3,
-    backgroundColor: 'rgba(255,255,255,0.12)',
-    overflow: 'hidden',
+    backgroundColor: '#E5E0DD',
   },
   barFillHoriz: {
     height: '100%',
     borderRadius: 3,
+    overflow: 'hidden',
   },
   scoreText: {
-    fontFamily: 'DMSans_700Bold',
-    fontSize: fontSize.md,
-    color: '#FFFFFF',
+    fontWeight: '700',
+    color: colors.text,
     width: 24,
     textAlign: 'right',
   },
 
-  // CTA
+  // CTA — solid coral button, white text
   ctaButton: {
+    backgroundColor: '#E8725A',
+    borderRadius: 18,
+    height: 56,
+    justifyContent: 'center',
+    alignItems: 'center',
     marginTop: spacing.sm,
+    shadowColor: 'rgba(0,0,0,0.15)',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 1,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  ctaButtonPressed: {
+    backgroundColor: '#C2553F',
+  },
+  ctaButtonText: {
+    color: '#FFFFFF',
   },
   loggedPill: {
-    backgroundColor: 'rgba(126,184,164,0.3)',
+    backgroundColor: 'rgba(255,255,255,0.2)',
     borderWidth: 1,
-    borderColor: 'rgba(126,184,164,0.5)',
+    borderColor: 'rgba(255,255,255,0.4)',
     borderRadius: 18,
     height: 56,
     justifyContent: 'center',
@@ -334,8 +387,6 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
   },
   loggedText: {
-    fontFamily: 'DMSans_700Bold',
-    fontSize: fontSize.md,
-    color: colors.sage,
+    color: '#FFFFFF',
   },
 });

@@ -1,0 +1,7 @@
+# Capture onboarding step 1 (welcome / symptom selection)
+appId: com.julia.ebb
+---
+- clearState
+- launchApp
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/onboarding-welcome

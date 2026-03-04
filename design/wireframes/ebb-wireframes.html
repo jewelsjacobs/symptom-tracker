@@ -1,0 +1,827 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Ebb — Wireframes</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #1a1a2e;
+    color: #fff;
+    padding: 40px 24px 80px;
+  }
+  h1 {
+    text-align: center;
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 6px;
+    letter-spacing: -0.5px;
+  }
+  .subtitle {
+    text-align: center;
+    font-size: 14px;
+    color: #888;
+    margin-bottom: 48px;
+  }
+  .section-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: #7C5CBF;
+    margin: 48px 0 16px;
+    text-align: center;
+  }
+  .screens-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 32px;
+    justify-content: center;
+    margin-bottom: 16px;
+  }
+  .screen-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+  }
+  .screen-label {
+    font-size: 12px;
+    color: #aaa;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .phone {
+    width: 240px;
+    min-height: 480px;
+    background: #F5F3FF;
+    border-radius: 32px;
+    border: 6px solid #333;
+    overflow: hidden;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+  }
+  .phone-notch {
+    width: 80px;
+    height: 18px;
+    background: #333;
+    border-radius: 0 0 12px 12px;
+    margin: 0 auto 12px;
+    flex-shrink: 0;
+  }
+  /* Design tokens */
+  :root {
+    --primary: #7C5CBF;
+    --primary-light: #B39DDB;
+    --bg: #F5F3FF;
+    --card: #FFFFFF;
+    --text: #2D2D2D;
+    --muted: #888888;
+    --border: #E0D7F5;
+    --sev1: #66BB6A;
+    --sev2: #AED581;
+    --sev3: #FFA726;
+    --sev4: #FF7043;
+    --sev5: #EF5350;
+  }
+  .screen-content {
+    flex: 1;
+    padding: 0 14px 14px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    color: var(--text);
+  }
+  /* Reusable components */
+  .sc-greeting { font-size: 16px; font-weight: 700; color: var(--text); }
+  .sc-date { font-size: 11px; color: var(--muted); margin-top: 1px; margin-bottom: 6px; }
+  .sc-card {
+    background: var(--card);
+    border-radius: 12px;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+  }
+  .sc-card-title { font-size: 11px; font-weight: 700; color: var(--text); margin-bottom: 6px; }
+  .sc-btn {
+    background: var(--primary);
+    color: #fff;
+    border-radius: 16px;
+    padding: 12px;
+    text-align: center;
+    font-size: 14px;
+    font-weight: 700;
+  }
+  .sc-btn-sm {
+    background: var(--primary);
+    color: #fff;
+    border-radius: 8px;
+    padding: 5px 10px;
+    font-size: 10px;
+    font-weight: 700;
+    display: inline-block;
+  }
+  .sc-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 4px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 11px;
+    color: var(--text);
+  }
+  .sc-row:last-child { border-bottom: none; }
+  .dots {
+    display: flex;
+    gap: 3px;
+    align-items: center;
+  }
+  .dot {
+    width: 9px; height: 9px;
+    border-radius: 50%;
+  }
+  .dot-filled { background: var(--primary); }
+  .dot-empty { background: var(--border); }
+  .dot-sev1 { background: var(--sev1); }
+  .dot-sev2 { background: var(--sev2); }
+  .dot-sev3 { background: var(--sev3); }
+  .dot-sev4 { background: var(--sev4); }
+  .dot-sev5 { background: var(--sev5); }
+
+  .sc-section-title {
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--muted);
+    margin-bottom: 4px;
+  }
+  .sc-muted { font-size: 10px; color: var(--muted); }
+  .sc-bold { font-weight: 700; }
+
+  /* Trend grid */
+  .trend-row { display: flex; gap: 4px; align-items: flex-end; }
+  .trend-cell { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+  .trend-sq {
+    width: 18px; height: 18px;
+    border-radius: 3px;
+  }
+  .trend-lbl { font-size: 7px; color: var(--muted); }
+
+  /* Tab bar */
+  .tab-bar {
+    display: flex;
+    background: var(--card);
+    border-top: 1px solid var(--border);
+    padding: 6px 4px;
+    flex-shrink: 0;
+  }
+  .tab {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    font-size: 8px;
+    color: var(--muted);
+    gap: 2px;
+  }
+  .tab.active { color: var(--primary); }
+  .tab-icon { font-size: 14px; }
+
+  /* Bar chart */
+  .bar-chart {
+    display: flex;
+    gap: 4px;
+    align-items: flex-end;
+    height: 60px;
+    padding-top: 4px;
+  }
+  .bar-col {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 2px;
+    height: 100%;
+  }
+  .bar {
+    width: 100%;
+    border-radius: 3px;
+    min-height: 3px;
+  }
+  .bar-lbl { font-size: 7px; color: var(--muted); }
+  .bar-lbl.today { color: var(--primary); font-weight: 700; }
+
+  /* Onboarding */
+  .progress-dots { display: flex; justify-content: center; gap: 6px; padding: 6px 0 10px; }
+  .pdot { width: 8px; height: 8px; border-radius: 50%; background: var(--border); }
+  .pdot.active { background: var(--primary); }
+  .chips { display: flex; flex-wrap: wrap; gap: 5px; margin: 6px 0; }
+  .chip {
+    padding: 4px 8px;
+    border-radius: 20px;
+    border: 1.5px solid var(--border);
+    font-size: 9px;
+    color: var(--text);
+    background: var(--card);
+  }
+  .chip.selected { background: var(--primary); border-color: var(--primary); color: #fff; }
+
+  /* History */
+  .hist-row {
+    display: flex;
+    background: var(--card);
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    overflow: hidden;
+    margin-bottom: 4px;
+  }
+  .hist-bar { width: 4px; }
+  .hist-content { flex: 1; padding: 6px 8px; }
+  .hist-date { font-size: 10px; font-weight: 700; color: var(--text); margin-bottom: 3px; }
+
+  /* Modal */
+  .modal-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.35);
+    display: flex;
+    align-items: flex-end;
+    border-radius: 28px;
+  }
+  .modal-card {
+    background: var(--card);
+    border-radius: 16px 16px 0 0;
+    padding: 12px;
+    width: 100%;
+  }
+  .modal-title { font-size: 12px; font-weight: 700; color: var(--text); margin-bottom: 8px; }
+
+  /* Daily log severity selector */
+  .sev-card {
+    background: var(--card);
+    border-radius: 10px;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    margin-bottom: 6px;
+  }
+  .sev-name { font-size: 12px; font-weight: 700; color: var(--text); margin-bottom: 6px; }
+  .sev-dots { display: flex; justify-content: space-between; }
+  .sev-btn {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    border: 2px solid;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--muted);
+    background: var(--card);
+  }
+  .sev-btn.sel { color: #fff; transform: scale(1.1); }
+  .sev-labels { display: flex; justify-content: space-between; font-size: 8px; color: var(--muted); margin-top: 2px; }
+
+  /* Input */
+  .sc-input {
+    background: var(--card);
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 8px;
+    font-size: 10px;
+    color: var(--muted);
+    width: 100%;
+  }
+
+  /* Sticky save */
+  .sticky-save {
+    background: var(--bg);
+    border-top: 1px solid var(--border);
+    padding: 8px 14px;
+    flex-shrink: 0;
+  }
+
+  /* Settings */
+  .settings-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 10px;
+    color: var(--text);
+  }
+  .settings-row:last-child { border-bottom: none; }
+  .x-btn { font-size: 10px; color: var(--sev5); }
+
+  /* Avg badge */
+  .avg-badge { text-align: right; }
+  .avg-lbl { font-size: 8px; color: var(--muted); }
+  .avg-val { font-size: 14px; font-weight: 700; color: var(--primary); }
+
+  /* Header */
+  .sc-header {
+    padding: 10px 14px 6px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg);
+    flex-shrink: 0;
+  }
+  .sc-header-title { font-size: 16px; font-weight: 700; color: var(--text); }
+  .sc-header-sub { font-size: 10px; color: var(--muted); }
+
+  /* Back row */
+  .back-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px 4px;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .back-arrow { font-size: 12px; color: var(--primary); }
+  .back-title { font-size: 13px; font-weight: 700; color: var(--text); }
+  .back-sub { font-size: 9px; color: var(--muted); }
+</style>
+</head>
+<body>
+
+<h1>🌊 Ebb — Wireframes</h1>
+<p class="subtitle">All screens · v1.0 · February 2026</p>
+
+<!-- ONBOARDING -->
+<div class="section-label">Phase 0 — Onboarding</div>
+<div class="screens-row">
+
+  <!-- Step 1: Symptom Picker -->
+  <div class="screen-wrap">
+    <div class="screen-label">Step 1 — Pick Symptoms</div>
+    <div class="phone">
+      <div class="phone-notch"></div>
+      <div class="progress-dots">
+        <div class="pdot active"></div><div class="pdot"></div><div class="pdot"></div>
+      </div>
+      <div class="screen-content">
+        <div class="sc-greeting">What do you want to track?</div>
+        <div class="sc-muted" style="margin-bottom:4px">Select up to 5 symptoms. Change anytime.</div>
+        <div style="font-size:9px;color:var(--primary);font-weight:700;margin-bottom:4px">2/5 selected</div>
+        <div class="chips">
+          <div class="chip selected">Pain</div>
+          <div class="chip selected">Fatigue</div>
+          <div class="chip">Brain Fog</div>
+          <div class="chip">Nausea</div>
+          <div class="chip">Headache</div>
+          <div class="chip">Anxiety</div>
+          <div class="chip">Dizziness</div>
+          <div class="chip">Joint Pain</div>
+          <div class="chip">Sleep Quality</div>
+          <div class="chip">Mood</div>
+        </div>
+        <div class="sc-muted" style="margin-top:4px;margin-bottom:3px">Or add your own:</div>
+        <div style="display:flex;gap:4px">
+          <div class="sc-input" style="flex:1">e.g. Heart Rate</div>
+          <div class="sc-btn-sm">Add</div>
+        </div>
+      </div>
+      <div style="padding:8px 14px;background:var(--bg);border-top:1px solid var(--border);flex-shrink:0;">
+        <div class="sc-btn" style="border-radius:10px;font-size:12px;padding:10px">Next →</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 2: Reminder -->
+  <div class="screen-wrap">
+    <div class="screen-label">Step 2 — Reminder</div>
+    <div class="phone">
+      <div class="phone-notch"></div>
+      <div class="progress-dots">
+        <div class="pdot active"></div><div class="pdot active"></div><div class="pdot"></div>
+      </div>
+      <div class="screen-content" style="align-items:center;justify-content:center">
+        <div class="sc-greeting" style="text-align:center">Set a daily reminder</div>
+        <div class="sc-muted" style="text-align:center;margin:4px 0 16px">A gentle nudge builds the habit.</div>
+        <div style="font-size:36px;font-weight:700;color:var(--primary);margin:8px 0">8:00 PM</div>
+        <div style="background:#E0D7F5;border-radius:10px;padding:8px 12px;width:100%;margin-top:8px">
+          <div style="text-align:center;font-size:9px;color:var(--muted)">time picker (iOS spinner)</div>
+          <div style="display:flex;justify-content:center;gap:16px;padding:6px 0;font-size:12px;color:var(--primary);font-weight:700">
+            <span>7</span><span>8</span><span style="font-weight:900;font-size:14px">9</span><span>10</span><span>11</span>
+          </div>
+        </div>
+      </div>
+      <div style="padding:8px 14px;background:var(--bg);border-top:1px solid var(--border);flex-shrink:0;display:flex;gap:8px">
+        <div style="flex:1;text-align:center;padding:10px;font-size:11px;color:var(--muted)">Skip</div>
+        <div class="sc-btn" style="flex:2;border-radius:10px;font-size:12px;padding:10px">Next →</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 3: Confirm -->
+  <div class="screen-wrap">
+    <div class="screen-label">Step 3 — Confirm</div>
+    <div class="phone">
+      <div class="phone-notch"></div>
+      <div class="progress-dots">
+        <div class="pdot active"></div><div class="pdot active"></div><div class="pdot active"></div>
+      </div>
+      <div class="screen-content" style="align-items:center">
+        <div style="font-size:36px;text-align:center;margin:8px 0">🎉</div>
+        <div class="sc-greeting" style="text-align:center">You're all set!</div>
+        <div class="sc-muted" style="margin:4px 0 10px;text-align:center">Here's what you'll be tracking:</div>
+        <div class="sc-card" style="width:100%">
+          <div style="font-size:11px;color:var(--text);line-height:1.8">• Pain<br>• Fatigue</div>
+        </div>
+        <div class="sc-muted" style="margin-top:8px;font-size:10px">📅 Daily reminder at 8:00 PM</div>
+      </div>
+      <div style="padding:8px 14px;background:var(--bg);border-top:1px solid var(--border);flex-shrink:0">
+        <div class="sc-btn" style="border-radius:10px;font-size:13px;padding:11px">Start Tracking 🚀</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- HOME -->
+<div class="section-label">Phase 1 — Main Screens</div>
+<div class="screens-row">
+
+  <!-- Home: not logged -->
+  <div class="screen-wrap">
+    <div class="screen-label">Home — Not Logged Today</div>
+    <div class="phone">
+      <div class="phone-notch"></div>
+      <div class="screen-content" style="padding-top:12px">
+        <div class="sc-greeting">Good morning 👋</div>
+        <div class="sc-date">Monday, February 23</div>
+        <div class="sc-btn">Log Today →</div>
+        <div style="margin-top:8px">
+          <div class="sc-section-title">Last 7 days</div>
+          <div class="sc-card">
+            <div style="font-size:10px;font-weight:600;color:var(--text);margin-bottom:4px">Pain</div>
+            <div class="trend-row">
+              <div class="trend-cell"><div class="trend-sq" style="background:var(--sev3)"></div><div class="trend-lbl">M</div></div>
+              <div class="trend-cell"><div class="trend-sq" style="background:var(--sev2)"></div><div class="trend-lbl">T</div></div>
+              <div class="trend-cell"><div class="trend-sq" style="background:var(--sev4)"></div><div class="trend-lbl">W</div></div>
+              <div class="trend-cell"><div class="trend-sq" style="background:var(--sev2)"></div><div class="trend-lbl">T</div></div>
+              <div class="trend-cell"><div class="trend-sq" style="background:var(--sev3)"></div><div class="trend-lbl">F</div></div>
+              <div class="trend-cell"><div class="trend-sq" style="background:var(--sev1)"></div><div class="trend-lbl">S</div></div>
+              <div class="trend-cell"><div class="trend-sq" style="background:var(--border)"></div><div class="trend-lbl" style="color:var(--primary);font-weight:700">S</div></div>
+            </div>
+            <div style="font-size:10px;font-weight:600;color:var(--text);margin:6px 0 4px">Fatigue</div>
+            <div class="trend-row">
+              <div class="trend-cell"><div class="trend-sq" style="background:var(--sev4)"></div><div class="trend-lbl">M</div></div>
+              <div class="trend-cell"><div class="trend-sq" style="background:var(--sev3)"></div><div class="trend-lbl">T</div></div>
+              <div class="trend-cell"><div class="trend-sq" style="background:var(--sev5)"></div><div class="trend-lbl">W</div></div>
+              <div class="trend-cell"><div class="trend-sq" style="background:var(--sev3)"></div><div class="trend-lbl">T</div></div>
+              <div class="trend-cell"><div class="trend-sq" style="background:var(--sev4)"></div><div class="trend-lbl">F</div></div>
+              <div class="trend-cell"><div class="trend-sq" style="background:var(--sev2)"></div><div class="trend-lbl">S</div></div>
+              <div class="trend-cell"><div class="trend-sq" style="background:var(--border)"></div><div class="trend-lbl" style="color:var(--primary);font-weight:700">S</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="tab-bar">
+        <div class="tab active"><div class="tab-icon">🏠</div>Home</div>
+        <div class="tab"><div class="tab-icon">📅</div>History</div>
+        <div class="tab"><div class="tab-icon">📈</div>Trends</div>
+        <div class="tab"><div class="tab-icon">⚙️</div>Settings</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Home: logged -->
+  <div class="screen-wrap">
+    <div class="screen-label">Home — Already Logged</div>
+    <div class="phone">
+      <div class="phone-notch"></div>
+      <div class="screen-content" style="padding-top:12px">
+        <div class="sc-greeting">Good morning 👋</div>
+        <div class="sc-date">Monday, February 23</div>
+        <div class="sc-card">
+          <div style="font-size:11px;font-weight:700;color:var(--text);margin-bottom:6px">✅ Logged today</div>
+          <div class="sc-row">
+            <span>Pain</span>
+            <div class="dots">
+              <div class="dot dot-sev3"></div><div class="dot dot-sev3"></div><div class="dot dot-sev3"></div><div class="dot dot-empty"></div><div class="dot dot-empty"></div>
+            </div>
+          </div>
+          <div class="sc-row" style="border-bottom:none">
+            <span>Fatigue</span>
+            <div class="dots">
+              <div class="dot dot-sev4"></div><div class="dot dot-sev4"></div><div class="dot dot-sev4"></div><div class="dot dot-sev4"></div><div class="dot dot-empty"></div>
+            </div>
+          </div>
+          <div class="sc-muted" style="margin-top:6px;font-style:italic">📝 Busy day, lots of walking</div>
+        </div>
+        <div style="margin-top:4px">
+          <div class="sc-section-title">Last 7 days</div>
+          <div class="sc-card">
+            <div style="font-size:10px;font-weight:600;color:var(--text);margin-bottom:4px">Pain</div>
+            <div class="trend-row">
+              <div class="trend-cell"><div class="trend-sq" style="background:var(--sev3)"></div><div class="trend-lbl">M</div></div>
+              <div class="trend-cell"><div class="trend-sq" style="background:var(--sev2)"></div><div class="trend-lbl">T</div></div>
+              <div class="trend-cell"><div class="trend-sq" style="background:var(--sev4)"></div><div class="trend-lbl">W</div></div>
+              <div class="trend-cell"><div class="trend-sq" style="background:var(--sev2)"></div><div class="trend-lbl">T</div></div>
+              <div class="trend-cell"><div class="trend-sq" style="background:var(--sev3)"></div><div class="trend-lbl">F</div></div>
+              <div class="trend-cell"><div class="trend-sq" style="background:var(--sev1)"></div><div class="trend-lbl">S</div></div>
+              <div class="trend-cell"><div class="trend-sq" style="background:var(--sev3)"></div><div class="trend-lbl" style="color:var(--primary);font-weight:700">S</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="tab-bar">
+        <div class="tab active"><div class="tab-icon">🏠</div>Home</div>
+        <div class="tab"><div class="tab-icon">📅</div>History</div>
+        <div class="tab"><div class="tab-icon">📈</div>Trends</div>
+        <div class="tab"><div class="tab-icon">⚙️</div>Settings</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Daily Log -->
+  <div class="screen-wrap">
+    <div class="screen-label">Daily Log</div>
+    <div class="phone">
+      <div class="phone-notch"></div>
+      <div class="back-row">
+        <span class="back-arrow">←</span>
+        <div>
+          <div class="back-title">Today's Log</div>
+          <div class="back-sub">Monday, February 23</div>
+        </div>
+      </div>
+      <div class="screen-content" style="padding-top:8px;overflow-y:auto">
+        <div class="sev-card">
+          <div class="sev-name">Pain</div>
+          <div class="sev-dots">
+            <div class="sev-btn sel" style="border-color:var(--sev1);background:var(--sev1)">1</div>
+            <div class="sev-btn" style="border-color:var(--sev2)">2</div>
+            <div class="sev-btn sel" style="border-color:var(--sev3);background:var(--sev3)">3</div>
+            <div class="sev-btn" style="border-color:var(--sev4)">4</div>
+            <div class="sev-btn" style="border-color:var(--sev5)">5</div>
+          </div>
+          <div class="sev-labels"><span>Mild</span><span>Severe</span></div>
+        </div>
+        <div class="sev-card">
+          <div class="sev-name">Fatigue</div>
+          <div class="sev-dots">
+            <div class="sev-btn" style="border-color:var(--sev1)">1</div>
+            <div class="sev-btn" style="border-color:var(--sev2)">2</div>
+            <div class="sev-btn" style="border-color:var(--sev3)">3</div>
+            <div class="sev-btn sel" style="border-color:var(--sev4);background:var(--sev4)">4</div>
+            <div class="sev-btn" style="border-color:var(--sev5)">5</div>
+          </div>
+          <div class="sev-labels"><span>Mild</span><span>Severe</span></div>
+        </div>
+        <div class="sc-card">
+          <div style="font-size:11px;font-weight:600;color:var(--text);margin-bottom:4px">Add a note (optional)</div>
+          <div class="sc-input" style="font-style:italic">How are you feeling overall?</div>
+        </div>
+      </div>
+      <div class="sticky-save">
+        <div class="sc-btn" style="border-radius:10px;font-size:13px;padding:10px">Save Log ✓</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- HISTORY + TRENDS -->
+<div class="screens-row">
+
+  <!-- History list -->
+  <div class="screen-wrap">
+    <div class="screen-label">History</div>
+    <div class="phone">
+      <div class="phone-notch"></div>
+      <div class="sc-header">
+        <div class="sc-header-title">History</div>
+        <div class="sc-header-sub">12 days logged</div>
+      </div>
+      <div class="screen-content" style="padding-top:8px">
+        <div class="hist-row">
+          <div class="hist-bar" style="background:var(--sev3)"></div>
+          <div class="hist-content">
+            <div class="hist-date">📅 Today</div>
+            <div class="dots"><div class="dot dot-sev3"></div><div class="dot dot-sev4"></div></div>
+          </div>
+          <div style="padding:8px;font-size:14px;color:var(--muted)">›</div>
+        </div>
+        <div class="hist-row">
+          <div class="hist-bar" style="background:var(--sev2)"></div>
+          <div class="hist-content">
+            <div class="hist-date">Sun, Feb 22</div>
+            <div class="dots"><div class="dot dot-sev2"></div><div class="dot dot-sev2"></div></div>
+            <div class="sc-muted" style="margin-top:2px;font-style:italic">📝 Good day overall</div>
+          </div>
+          <div style="padding:8px;font-size:14px;color:var(--muted)">›</div>
+        </div>
+        <div class="hist-row">
+          <div class="hist-bar" style="background:var(--sev5)"></div>
+          <div class="hist-content">
+            <div class="hist-date">Sat, Feb 21</div>
+            <div class="dots"><div class="dot dot-sev5"></div><div class="dot dot-sev4"></div></div>
+          </div>
+          <div style="padding:8px;font-size:14px;color:var(--muted)">›</div>
+        </div>
+        <div class="hist-row">
+          <div class="hist-bar" style="background:var(--sev1)"></div>
+          <div class="hist-content">
+            <div class="hist-date">Fri, Feb 20</div>
+            <div class="dots"><div class="dot dot-sev1"></div><div class="dot dot-sev2"></div></div>
+          </div>
+          <div style="padding:8px;font-size:14px;color:var(--muted)">›</div>
+        </div>
+      </div>
+      <div class="tab-bar">
+        <div class="tab"><div class="tab-icon">🏠</div>Home</div>
+        <div class="tab active"><div class="tab-icon">📅</div>History</div>
+        <div class="tab"><div class="tab-icon">📈</div>Trends</div>
+        <div class="tab"><div class="tab-icon">⚙️</div>Settings</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- History detail modal -->
+  <div class="screen-wrap">
+    <div class="screen-label">History — Detail Modal</div>
+    <div class="phone">
+      <div class="phone-notch"></div>
+      <div class="sc-header">
+        <div class="sc-header-title">History</div>
+        <div class="sc-header-sub">12 days logged</div>
+      </div>
+      <div class="screen-content" style="padding-top:8px">
+        <div class="hist-row" style="opacity:0.4">
+          <div class="hist-bar" style="background:var(--sev3)"></div>
+          <div class="hist-content"><div class="hist-date">📅 Today</div></div>
+        </div>
+      </div>
+      <div class="tab-bar">
+        <div class="tab"><div class="tab-icon">🏠</div>Home</div>
+        <div class="tab active"><div class="tab-icon">📅</div>History</div>
+        <div class="tab"><div class="tab-icon">📈</div>Trends</div>
+        <div class="tab"><div class="tab-icon">⚙️</div>Settings</div>
+      </div>
+      <div class="modal-overlay">
+        <div class="modal-card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+            <div class="modal-title">Sun, Feb 22, 2026</div>
+            <div style="font-size:14px;color:var(--muted)">✕</div>
+          </div>
+          <div class="sc-row">
+            <span>Pain</span>
+            <div class="dots">
+              <div class="dot dot-sev2"></div><div class="dot dot-sev2"></div><div class="dot dot-empty"></div><div class="dot dot-empty"></div><div class="dot dot-empty"></div>
+            </div>
+          </div>
+          <div class="sc-row" style="border-bottom:none">
+            <span>Fatigue</span>
+            <div class="dots">
+              <div class="dot dot-sev2"></div><div class="dot dot-sev2"></div><div class="dot dot-empty"></div><div class="dot dot-empty"></div><div class="dot dot-empty"></div>
+            </div>
+          </div>
+          <div style="background:var(--bg);border-radius:6px;padding:6px 8px;margin-top:8px">
+            <div style="font-size:8px;font-weight:700;text-transform:uppercase;color:var(--muted);margin-bottom:2px">Note</div>
+            <div style="font-size:10px;color:var(--text)">Good day overall</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Trends -->
+  <div class="screen-wrap">
+    <div class="screen-label">Trends</div>
+    <div class="phone">
+      <div class="phone-notch"></div>
+      <div class="sc-header">
+        <div class="sc-header-title">Trends</div>
+        <div class="sc-header-sub">Last 7 days · Unlimited history with Premium</div>
+      </div>
+      <div class="screen-content" style="padding-top:8px">
+        <!-- Pain card -->
+        <div class="sc-card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <div style="font-size:13px;font-weight:700;color:var(--text)">Pain</div>
+            <div class="avg-badge"><div class="avg-lbl">7-day avg</div><div class="avg-val">2.8</div></div>
+          </div>
+          <div style="display:flex;gap:4px;align-items:flex-end;">
+            <div style="display:flex;flex-direction:column;justify-content:space-between;height:60px;margin-right:2px">
+              <div style="font-size:8px;color:var(--muted)">5</div>
+              <div style="font-size:8px;color:var(--muted)">4</div>
+              <div style="font-size:8px;color:var(--muted)">3</div>
+              <div style="font-size:8px;color:var(--muted)">2</div>
+              <div style="font-size:8px;color:var(--muted)">1</div>
+            </div>
+            <div class="bar-chart" style="flex:1">
+              <div class="bar-col"><div class="bar" style="height:36px;background:var(--sev3)"></div><div class="bar-lbl">M</div></div>
+              <div class="bar-col"><div class="bar" style="height:24px;background:var(--sev2)"></div><div class="bar-lbl">T</div></div>
+              <div class="bar-col"><div class="bar" style="height:48px;background:var(--sev4)"></div><div class="bar-lbl">W</div></div>
+              <div class="bar-col"><div class="bar" style="height:24px;background:var(--sev2)"></div><div class="bar-lbl">T</div></div>
+              <div class="bar-col"><div class="bar" style="height:36px;background:var(--sev3)"></div><div class="bar-lbl">F</div></div>
+              <div class="bar-col"><div class="bar" style="height:12px;background:var(--sev1)"></div><div class="bar-lbl">S</div></div>
+              <div class="bar-col"><div class="bar" style="height:36px;background:var(--sev3)"></div><div class="bar-lbl today">S</div></div>
+            </div>
+          </div>
+          <div style="display:flex;gap:6px;margin-top:6px;align-items:center;flex-wrap:wrap">
+            <div style="display:flex;align-items:center;gap:2px"><div class="dot dot-sev1" style="width:8px;height:8px"></div><div style="font-size:8px;color:var(--muted)">1</div></div>
+            <div style="display:flex;align-items:center;gap:2px"><div class="dot dot-sev2" style="width:8px;height:8px"></div><div style="font-size:8px;color:var(--muted)">2</div></div>
+            <div style="display:flex;align-items:center;gap:2px"><div class="dot dot-sev3" style="width:8px;height:8px"></div><div style="font-size:8px;color:var(--muted)">3</div></div>
+            <div style="display:flex;align-items:center;gap:2px"><div class="dot dot-sev4" style="width:8px;height:8px"></div><div style="font-size:8px;color:var(--muted)">4</div></div>
+            <div style="display:flex;align-items:center;gap:2px"><div class="dot dot-sev5" style="width:8px;height:8px"></div><div style="font-size:8px;color:var(--muted)">5</div></div>
+            <div style="font-size:8px;color:var(--muted);font-style:italic"> mild → severe</div>
+          </div>
+        </div>
+        <!-- Fatigue card -->
+        <div class="sc-card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <div style="font-size:13px;font-weight:700;color:var(--text)">Fatigue</div>
+            <div class="avg-badge"><div class="avg-lbl">7-day avg</div><div class="avg-val">3.6</div></div>
+          </div>
+          <div class="bar-chart">
+            <div class="bar-col"><div class="bar" style="height:48px;background:var(--sev4)"></div><div class="bar-lbl">M</div></div>
+            <div class="bar-col"><div class="bar" style="height:36px;background:var(--sev3)"></div><div class="bar-lbl">T</div></div>
+            <div class="bar-col"><div class="bar" style="height:60px;background:var(--sev5)"></div><div class="bar-lbl">W</div></div>
+            <div class="bar-col"><div class="bar" style="height:36px;background:var(--sev3)"></div><div class="bar-lbl">T</div></div>
+            <div class="bar-col"><div class="bar" style="height:48px;background:var(--sev4)"></div><div class="bar-lbl">F</div></div>
+            <div class="bar-col"><div class="bar" style="height:24px;background:var(--sev2)"></div><div class="bar-lbl">S</div></div>
+            <div class="bar-col"><div class="bar" style="height:48px;background:var(--sev4)"></div><div class="bar-lbl today">S</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="tab-bar">
+        <div class="tab"><div class="tab-icon">🏠</div>Home</div>
+        <div class="tab"><div class="tab-icon">📅</div>History</div>
+        <div class="tab active"><div class="tab-icon">📈</div>Trends</div>
+        <div class="tab"><div class="tab-icon">⚙️</div>Settings</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- SETTINGS -->
+<div class="screens-row">
+
+  <div class="screen-wrap">
+    <div class="screen-label">Settings</div>
+    <div class="phone">
+      <div class="phone-notch"></div>
+      <div class="sc-header">
+        <div class="sc-header-title">Settings</div>
+      </div>
+      <div class="screen-content" style="padding-top:8px;overflow-y:auto">
+        <div class="sc-section-title">My Symptoms</div>
+        <div class="sc-card">
+          <div class="settings-row"><span>Pain</span><span class="x-btn">✕</span></div>
+          <div class="settings-row"><span>Fatigue</span><span class="x-btn">✕</span></div>
+          <div style="display:flex;gap:4px;margin-top:6px">
+            <div class="sc-input" style="flex:1">Add a symptom…</div>
+            <div class="sc-btn-sm">Add</div>
+          </div>
+          <div class="sc-muted" style="margin-top:4px">2/5 symptoms (free plan)</div>
+        </div>
+        <div class="sc-section-title" style="margin-top:8px">Daily Reminder</div>
+        <div class="sc-card">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <span style="font-size:11px;color:var(--text)">🔔 8:00 PM</span>
+            <div style="display:flex;gap:4px">
+              <div class="sc-btn-sm">Change</div>
+              <div style="border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:9px;color:var(--muted)">Clear</div>
+            </div>
+          </div>
+        </div>
+        <div class="sc-section-title" style="margin-top:8px">Account</div>
+        <div class="sc-card">
+          <div style="font-size:10px;color:var(--text);margin-bottom:2px">Not signed in</div>
+          <div class="sc-muted" style="margin-bottom:6px">Sign in for cloud backup + PDF export</div>
+          <div style="border:1.5px solid var(--primary);border-radius:8px;padding:6px;text-align:center;font-size:10px;color:var(--primary);font-weight:600">Sign in / Create account</div>
+        </div>
+        <div class="sc-section-title" style="margin-top:8px">About</div>
+        <div class="sc-card">
+          <div class="settings-row"><span style="color:var(--muted)">App name</span><span style="font-weight:600">Ebb</span></div>
+          <div class="settings-row"><span style="color:var(--muted)">Version</span><span style="font-weight:600">1.0.0</span></div>
+          <div class="settings-row" style="border-bottom:none"><span style="color:var(--muted)">Tagline</span><span style="font-weight:600;font-size:9px">Track in 30 seconds a day</span></div>
+        </div>
+      </div>
+      <div class="tab-bar">
+        <div class="tab"><div class="tab-icon">🏠</div>Home</div>
+        <div class="tab"><div class="tab-icon">📅</div>History</div>
+        <div class="tab"><div class="tab-icon">📈</div>Trends</div>
+        <div class="tab active"><div class="tab-icon">⚙️</div>Settings</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<p style="text-align:center;color:#555;font-size:12px;margin-top:48px">Ebb · Wireframes v1.0 · Builder 🏗️ · February 2026</p>
+
+</body>
+</html>

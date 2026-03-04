@@ -1,0 +1,12 @@
+# Capture onboarding step 2 (reminder time)
+appId: com.julia.ebb
+---
+- clearState
+- launchApp
+- waitForAnimationToEnd
+- tapOn: "Pain"
+- tapOn: "Fatigue"
+- tapOn: "Brain Fog"
+- tapOn: "Next →"
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/onboarding-reminder

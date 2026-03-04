@@ -1,0 +1,8 @@
+# Capture the settings screen
+appId: com.julia.ebb
+---
+- launchApp
+- waitForAnimationToEnd
+- tapOn: "Settings"
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/settings

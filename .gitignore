@@ -1,0 +1,15 @@
+# Visual QA diff images and screenshots
+diffs/
+screenshots/
+
+# dependencies
+node_modules/
+
+# macOS
+.DS_Store
+
+# local config
+.mcp.json
+
+# backups
+*.bk*

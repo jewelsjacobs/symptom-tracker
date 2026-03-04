@@ -1,6 +1,7 @@
 import React, { useRef, useEffect } from 'react';
-import { StyleSheet, View, Pressable, Text, Animated } from 'react-native';
-import { severity as severityColors, fontSize, fontWeight } from '../theme';
+import { StyleSheet, View, Pressable, Animated } from 'react-native';
+import { severity as severityColors } from '../theme';
+import EbbText from './EbbText';
 
 type Props = {
   value: number | null;            // 1-5 or null
@@ -12,6 +13,7 @@ type Props = {
 /**
  * 5-dot severity selector with spring scale animation.
  * Each dot is a 44x44 touch target. Selected dot fills with severity color.
+ * Numbers inside dots provide non-color secondary cue (G3).
  */
 export default function SeverityDots({ value, onChange, variant = 'light' }: Props) {
   return (
@@ -28,12 +30,12 @@ export default function SeverityDots({ value, onChange, variant = 'light' }: Pro
         ))}
       </View>
       <View style={styles.labels}>
-        <Text style={[styles.label, variant === 'light' ? styles.labelLight : styles.labelDark]}>
+        <EbbText type="caption" style={variant === 'light' ? styles.labelLight : styles.labelDark}>
           Mild
-        </Text>
-        <Text style={[styles.label, variant === 'light' ? styles.labelLight : styles.labelDark]}>
+        </EbbText>
+        <EbbText type="caption" style={variant === 'light' ? styles.labelLight : styles.labelDark}>
           Severe
-        </Text>
+        </EbbText>
       </View>
     </View>
   );
@@ -61,7 +63,13 @@ function Dot({
   }, [selected, scale]);
 
   const borderColor =
-    variant === 'light' ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.15)';
+    variant === 'light' ? 'rgba(255,255,255,0.4)' : '#E5E0DD';
+
+  const numberColor = selected
+    ? '#FFFFFF'
+    : variant === 'light'
+      ? 'rgba(255,255,255,0.6)'
+      : '#7A706B';
 
   return (
     <Pressable onPress={onPress} style={styles.touchTarget}>
@@ -73,7 +81,9 @@ function Dot({
             ? { backgroundColor: severityColors[level - 1] }
             : { borderWidth: 2, borderColor },
         ]}
-      />
+      >
+        <EbbText type="caption" style={[styles.dotNumber, { color: numberColor }]}>{level}</EbbText>
+      </Animated.View>
     </Pressable>
   );
 }
@@ -91,23 +101,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   dot: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  dotNumber: {
+    fontWeight: '700',
+    textAlign: 'center',
   },
   labels: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginTop: 2,
   },
-  label: {
-    fontSize: fontSize.xs,
-    fontFamily: 'DMSans_400Regular',
-  },
   labelLight: {
-    color: 'rgba(255,255,255,0.5)',
+    color: 'rgba(255,255,255,0.7)',
   },
   labelDark: {
-    color: 'rgba(0,0,0,0.4)',
+    color: '#7A706B',
   },
 });

@@ -1,5 +1,4 @@
-// Ebb Design System v2 — Warm Topographic + Liquid Glass
-// Primary font: DM Sans (loaded in App.tsx)
+// Ebb Design System — System fonts (SF Pro) + Warm Coral Palette
 
 export const colors = {
   // --- Brand ---
@@ -20,7 +19,7 @@ export const colors = {
 
   // --- Text ---
   text:           '#2D2926',  // Warm near-black — headlines, body text
-  textMuted:      '#7A706B',  // Warm gray — subtitles, metadata, labels
+  textMuted:      '#6B625D',  // Warm gray — subtitles, metadata, labels (darkened for WCAG AA)
   textInverse:    '#FFFFFF',  // White text on dark/glass surfaces
 
   // --- Utility ---
@@ -35,16 +34,18 @@ export const colors = {
 };
 
 /**
- * Severity scale — warm terrain metaphor (no harsh red/green binary)
+ * Severity scale — wide hue separation for accessibility (G5)
+ * Teal → green → gold → coral → red
+ * Distinguishable even for most colorblind users.
  * Index 0 = severity 1 (lowest) -> index 4 = severity 5 (highest)
  * Usage: severity[entry.severity - 1]
  */
 export const severity: string[] = [
-  '#7EB8A4',  // 1 – calm – sage green
-  '#B8D4A8',  // 2 – low – sage-amber transition
-  '#F5A962',  // 3 – moderate – amber
+  '#2A9D8F',  // 1 – mild – teal green
+  '#6BBF59',  // 2 – low – green
+  '#E9A830',  // 3 – moderate – amber/gold
   '#E8725A',  // 4 – high – coral
-  '#C2553F',  // 5 – severe – deep terracotta
+  '#D4483B',  // 5 – severe – strong red
 ];
 
 export const spacing = {
@@ -63,7 +64,7 @@ export const fontSize = {
   lg:   17,
   xl:   22,
   xxl:  28,
-  xxxl: 36,
+  xxxl: 34,
 };
 
 export const radius = {
@@ -79,4 +80,42 @@ export const fontWeight = {
   medium:    '500' as const,
   semibold:  '600' as const,
   bold:      '700' as const,
+};
+
+/**
+ * Per-symptom unique colors (G3).
+ * Each symptom gets a permanent color for icons, bars, dots, and charts.
+ * Higher saturation and wider hue range than v1.
+ */
+export const symptomColors: Record<string, string> = {
+  'pain':          '#D4483B',  // strong red — waveform icon
+  'fatigue':       '#E8725A',  // coral — battery icon
+  'brain fog':     '#2A9D8F',  // teal — cloud icon
+  'nausea':        '#E9A830',  // golden amber — wavy lines icon
+  'headache':      '#7B4EA3',  // purple — lightning bolt icon
+  'anxiety':       '#4A7FBB',  // blue — spiral icon
+  'dizziness':     '#D4883B',  // orange — circular arrows icon
+  'joint pain':    '#C44569',  // rose — joint symbol icon
+  'sleep quality': '#6C63FF',  // indigo — proper crescent moon icon
+  'mood':          '#2EAD6B',  // green — signal bars icon
+  'depression':    '#7B4EA3',  // purple — bar chart icon
+};
+
+/**
+ * Get the unique color for a symptom name.
+ * Case-insensitive, partial match (same logic as SymptomIcon).
+ * Returns colors.primary for unknown symptoms.
+ */
+export function getSymptomColor(name: string): string {
+  const lower = name.toLowerCase();
+  for (const [key, color] of Object.entries(symptomColors)) {
+    if (lower.includes(key)) return color;
+  }
+  return colors.primary;
+}
+
+/** Apple HIG constants */
+export const HIG = {
+  minTouchTarget: 44,
+  compactMargin: 16,  // same as spacing.md
 };

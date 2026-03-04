@@ -1,0 +1,8 @@
+# Capture the history screen
+appId: com.julia.ebb
+---
+- launchApp
+- waitForAnimationToEnd
+- tapOn: "History"
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/history

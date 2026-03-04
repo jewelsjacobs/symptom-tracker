@@ -1,0 +1,10 @@
+# Capture settings symptoms screen
+appId: com.julia.ebb
+---
+- launchApp
+- waitForAnimationToEnd
+- tapOn: "Settings"
+- waitForAnimationToEnd
+- tapOn: "My Symptoms"
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/settings-symptoms

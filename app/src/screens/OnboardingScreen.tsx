@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import {
   View,
-  Text,
   StyleSheet,
   Pressable,
   TextInput,
@@ -11,17 +10,27 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
-import { useNavigation } from '@react-navigation/native';
-import { StackNavigationProp } from '@react-navigation/stack';
+import { useRouter } from 'expo-router';
+import Svg, { Path, Circle as SvgCircle } from 'react-native-svg';
 
-import { colors, spacing, fontSize, radius } from '../theme';
+import { colors, spacing, radius, getSymptomColor } from '../theme';
+
+/** Convert hex color to rgba string at given opacity */
+function hexToRgba(hex: string, opacity: number): string {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r},${g},${b},${opacity})`;
+}
 import { saveSettings, getDefaultSettings } from '../storage';
 import { Symptom } from '../types';
-import { RootStackParamList, useAppContext } from '../navigation';
+import { useAppContext } from '../context/AppContext';
 import { requestNotificationPermission, scheduleReminder } from '../notifications';
 import SymptomIcon from '../components/SymptomIcon';
-
-type NavProp = StackNavigationProp<RootStackParamList, 'Onboarding'>;
+import CreamBackground from '../components/CreamBackground';
+import CoralButton from '../components/CoralButton';
+import GlassCard from '../components/GlassCard';
+import EbbText from '../components/EbbText';
 
 const SUGGESTIONS = [
   'Pain', 'Fatigue', 'Brain Fog', 'Nausea', 'Headache',
@@ -31,7 +40,7 @@ const SUGGESTIONS = [
 const MAX_FREE_SYMPTOMS = 5;
 
 export default function OnboardingScreen() {
-  const navigation = useNavigation<NavProp>();
+  const router = useRouter();
   const { completeOnboarding } = useAppContext();
 
   const [step, setStep] = useState(1);
@@ -130,7 +139,7 @@ export default function OnboardingScreen() {
     }
 
     completeOnboarding();
-    navigation.reset({ index: 0, routes: [{ name: 'Main' }] });
+    router.replace('/(tabs)/home' as any);
   }
 
   // -- Helpers --
@@ -157,34 +166,46 @@ export default function OnboardingScreen() {
   function renderStep1() {
     return (
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <Text style={styles.title}>What do you want to track?</Text>
-        <Text style={styles.subtitle}>Pick up to 5. You can change these later.</Text>
+        <EbbText type="largeTitle" style={styles.title}>What do you want to track?</EbbText>
+        <EbbText type="subhead" style={styles.subtitle}>Pick up to 5. You can always change these later.</EbbText>
 
         <View style={styles.counterPill}>
-          <Text style={styles.counterText}>{selectedCount} / {MAX_FREE_SYMPTOMS} selected</Text>
+          <EbbText type="caption" style={styles.counterText}>★ {selectedCount} / {MAX_FREE_SYMPTOMS} selected</EbbText>
         </View>
 
-        <View style={styles.chipsGrid}>
-          {SUGGESTIONS.map((name) => {
-            const isSelected = selectedSuggestions.includes(name);
-            return (
-              <Pressable
-                key={name}
-                onPress={() => toggleSuggestion(name)}
-                style={[styles.chip, isSelected && styles.chipSelected]}
-              >
-                <SymptomIcon
-                  name={name}
-                  size={14}
-                  color={isSelected ? colors.primaryDark : colors.textMuted}
-                />
-                <Text style={[styles.chipText, isSelected && styles.chipTextSelected]}>
-                  {name}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
+        <GlassCard variant="cream" style={styles.chipsCard}>
+          <View style={styles.chipsGrid}>
+            {SUGGESTIONS.map((name) => {
+              const isSelected = selectedSuggestions.includes(name);
+              return (
+                <Pressable
+                  key={name}
+                  onPress={() => toggleSuggestion(name)}
+                  style={[styles.chip, isSelected && styles.chipSelected]}
+                >
+                  <SymptomIcon
+                    name={name}
+                    size={18}
+                    color={getSymptomColor(name)}
+                    showBox
+                    boxSize={30}
+                    boxColor={hexToRgba(getSymptomColor(name), isSelected ? 0.15 : 0.08)}
+                  />
+                  <EbbText type="footnote" style={[styles.chipText, isSelected && styles.chipTextSelected]}>
+                    {name}
+                  </EbbText>
+                  {isSelected && <EbbText type="caption" style={styles.chipCheck}>✓</EbbText>}
+                </Pressable>
+              );
+            })}
+          </View>
+        </GlassCard>
+
+        {selectedCount > 0 && (
+          <EbbText type="caption" style={styles.deselectHint}>
+            {selectedCount} selected · tap any to deselect
+          </EbbText>
+        )}
 
         {/* Custom symptoms */}
         <View style={styles.customRow}>
@@ -198,7 +219,7 @@ export default function OnboardingScreen() {
             onSubmitEditing={addCustomSymptom}
           />
           <Pressable style={styles.addBtn} onPress={addCustomSymptom}>
-            <Text style={styles.addBtnText}>Add</Text>
+            <EbbText type="button" style={styles.addBtnText}>Add</EbbText>
           </Pressable>
         </View>
 
@@ -207,9 +228,9 @@ export default function OnboardingScreen() {
           .map((name) => (
             <View key={name} style={styles.customTag}>
               <SymptomIcon name={name} size={12} color={colors.primaryDark} />
-              <Text style={styles.customTagText}>{name}</Text>
-              <Pressable onPress={() => toggleSuggestion(name)} hitSlop={8}>
-                <Text style={styles.customTagRemove}>x</Text>
+              <EbbText type="footnote" style={styles.customTagText}>{name}</EbbText>
+              <Pressable onPress={() => toggleSuggestion(name)} hitSlop={8} style={styles.customTagRemoveBtn}>
+                <EbbText type="footnote" style={styles.customTagRemove}>x</EbbText>
               </Pressable>
             </View>
           ))}
@@ -220,30 +241,29 @@ export default function OnboardingScreen() {
   function renderStep2() {
     return (
       <View style={styles.stepContent}>
-        <Text style={styles.title}>When should we remind you?</Text>
-        <Text style={styles.subtitle}>
+        <EbbText type="largeTitle" style={styles.title}>When should we remind you?</EbbText>
+        <EbbText type="subhead" style={styles.subtitle}>
           A gentle nudge each day helps build the habit.
-        </Text>
+        </EbbText>
 
-        <View style={styles.timeDisplay}>
-          <Text style={styles.timeText}>{formatTime(reminderDate)}</Text>
+        <View style={styles.pickerContainer}>
+          <EbbText type="caption" style={styles.reminderLabel}>DAILY REMINDER</EbbText>
+          {(Platform.OS === 'ios' || showPicker) && (
+            <DateTimePicker
+              value={reminderDate}
+              mode="time"
+              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+              onChange={onTimeChange}
+              textColor={colors.text}
+            />
+          )}
+
+          {Platform.OS === 'android' && !showPicker && (
+            <Pressable style={styles.changeTimeBtn} onPress={() => setShowPicker(true)}>
+              <EbbText type="headline" style={styles.changeTimeBtnText}>Change time</EbbText>
+            </Pressable>
+          )}
         </View>
-
-        {(Platform.OS === 'ios' || showPicker) && (
-          <DateTimePicker
-            value={reminderDate}
-            mode="time"
-            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-            onChange={onTimeChange}
-            textColor={colors.text}
-          />
-        )}
-
-        {Platform.OS === 'android' && !showPicker && (
-          <Pressable style={styles.changeTimeBtn} onPress={() => setShowPicker(true)}>
-            <Text style={styles.changeTimeBtnText}>Change time</Text>
-          </Pressable>
-        )}
       </View>
     );
   }
@@ -251,76 +271,130 @@ export default function OnboardingScreen() {
   function renderStep3() {
     return (
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <Text style={styles.title}>You're all set</Text>
-        <Text style={styles.subtitle}>Here's what you'll be tracking:</Text>
-
-        <View style={styles.summaryCard}>
-          {allSelected.map((name) => (
-            <View key={name} style={styles.summaryRow}>
-              <SymptomIcon name={name} size={14} color={colors.text} showBox />
-              <Text style={styles.summaryName}>{name}</Text>
-            </View>
-          ))}
+        {/* Success icon — sage circle with white checkmark */}
+        <View style={styles.successIcon}>
+          <Svg width={28} height={28} viewBox="0 0 28 28">
+            <SvgCircle cx={14} cy={14} r={14} fill={colors.sage} />
+            <Path
+              d="M8 14 L12 18 L20 10"
+              stroke="#FFFFFF"
+              strokeWidth={2.5}
+              fill="none"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </Svg>
         </View>
 
-        <Text style={styles.summaryReminder}>
-          {reminderEnabled
-            ? `Reminder set for ${formatTime(reminderDate)}`
-            : 'No reminder set'}
-        </Text>
+        <EbbText type="largeTitle" style={styles.titleStep3}>You're all set</EbbText>
+        <EbbText type="subhead" style={styles.subtitle}>Here's what you'll be tracking:</EbbText>
+
+        <EbbText type="caption" style={styles.sectionLabel}>YOUR SYMPTOMS</EbbText>
+
+        <GlassCard variant="cream" style={styles.symptomListCard}>
+          {allSelected.map((name, index) => (
+            <View
+              key={name}
+              style={[
+                styles.symptomRow,
+                { borderLeftWidth: 3, borderLeftColor: getSymptomColor(name) },
+                index < allSelected.length - 1 && styles.symptomRowBorder,
+              ]}
+            >
+              <SymptomIcon name={name} size={16} color={getSymptomColor(name)} />
+              <EbbText type="body" style={styles.symptomRowName}>{name}</EbbText>
+              <View style={styles.checkCircle}>
+                <Svg width={14} height={14} viewBox="0 0 14 14">
+                  <SvgCircle cx={7} cy={7} r={6.5} fill={colors.sage} />
+                  <Path
+                    d="M4 7 L6.2 9.2 L10 5"
+                    stroke="#FFFFFF"
+                    strokeWidth={1.5}
+                    fill="none"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </Svg>
+              </View>
+            </View>
+          ))}
+        </GlassCard>
+
+        <View style={styles.reminderInfoRow}>
+          <Svg width={18} height={18} viewBox="0 0 18 18">
+            <Path
+              d="M9 2C6.5 2 4.5 4 4.5 6.5V10L3 12H15L13.5 10V6.5C13.5 4 11.5 2 9 2Z"
+              stroke={colors.textMuted}
+              strokeWidth={1.2}
+              fill="none"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+            <Path
+              d="M7.5 14C7.5 14.83 8.17 15.5 9 15.5C9.83 15.5 10.5 14.83 10.5 14"
+              stroke={colors.textMuted}
+              strokeWidth={1.2}
+              fill="none"
+              strokeLinecap="round"
+            />
+          </Svg>
+          <EbbText type="body" style={styles.reminderInfoText}>
+            {reminderEnabled
+              ? `Reminder set for ${formatTime(reminderDate)}`
+              : 'No reminder set'}
+          </EbbText>
+        </View>
       </ScrollView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      {renderProgressDots()}
+    <CreamBackground>
+      <SafeAreaView style={styles.container}>
+        {renderProgressDots()}
 
-      <View style={styles.content}>
-        {step === 1 && renderStep1()}
-        {step === 2 && renderStep2()}
-        {step === 3 && renderStep3()}
-      </View>
+        <View style={styles.content}>
+          {step === 1 && renderStep1()}
+          {step === 2 && renderStep2()}
+          {step === 3 && renderStep3()}
+        </View>
 
-      {/* Navigation buttons */}
-      <View style={styles.navRow}>
-        {step > 1 && (
-          <Pressable style={styles.backBtn} onPress={() => setStep(step - 1)}>
-            <Text style={styles.backBtnText}>Back</Text>
-          </Pressable>
-        )}
+        {/* Navigation buttons */}
+        <View style={styles.navRow}>
+          {step === 1 && (
+            <CoralButton label="Next →" onPress={goToStep2} style={styles.ctaFull} />
+          )}
 
-        {step === 1 && (
-          <Pressable style={styles.nextBtn} onPress={goToStep2}>
-            <Text style={styles.nextBtnText}>Next</Text>
-          </Pressable>
-        )}
+          {step === 2 && (
+            <>
+              <CoralButton label="Set Reminder →" onPress={goToStep3} style={styles.ctaFull} />
+              <Pressable style={styles.skipBtn} onPress={skipReminder}>
+                <EbbText type="body" style={styles.skipBtnText}>Skip for now</EbbText>
+              </Pressable>
+              <Pressable style={styles.backLink} onPress={() => setStep(1)}>
+                <EbbText type="body" style={styles.backLinkText}>Back</EbbText>
+              </Pressable>
+            </>
+          )}
 
-        {step === 2 && (
-          <View style={styles.step2Btns}>
-            <Pressable style={styles.skipBtn} onPress={skipReminder}>
-              <Text style={styles.skipBtnText}>Skip for now</Text>
-            </Pressable>
-            <Pressable style={styles.nextBtn} onPress={goToStep3}>
-              <Text style={styles.nextBtnText}>Next</Text>
-            </Pressable>
-          </View>
-        )}
-
-        {step === 3 && (
-          <Pressable style={styles.startBtn} onPress={startTracking}>
-            <Text style={styles.startBtnText}>Start Tracking</Text>
-          </Pressable>
-        )}
-      </View>
-    </SafeAreaView>
+          {step === 3 && (
+            <>
+              <CoralButton label="Start Tracking →" onPress={startTracking} style={styles.ctaFull} />
+              <Pressable style={styles.backLink} onPress={() => setStep(2)}>
+                <EbbText type="body" style={styles.backLinkText}>Back</EbbText>
+              </Pressable>
+            </>
+          )}
+        </View>
+      </SafeAreaView>
+    </CreamBackground>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: 'transparent',
   },
   progressRow: {
     flexDirection: 'row',
@@ -344,22 +418,18 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    padding: spacing.lg,
+    padding: spacing.md,
     paddingBottom: spacing.xl,
   },
   stepContent: {
     flex: 1,
-    padding: spacing.lg,
+    padding: spacing.md,
   },
   title: {
-    fontFamily: 'DMSans_700Bold',
-    fontSize: fontSize.xxl,
     color: colors.text,
     marginBottom: spacing.sm,
   },
   subtitle: {
-    fontFamily: 'DMSans_400Regular',
-    fontSize: fontSize.md,
     color: colors.textMuted,
     marginBottom: spacing.lg,
     lineHeight: 22,
@@ -375,40 +445,54 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   counterText: {
-    fontFamily: 'DMSans_600SemiBold',
-    fontSize: fontSize.xs,
+    fontWeight: '600',
     color: colors.primaryDark,
   },
 
   // Chip grid
+  chipsCard: {
+    marginBottom: spacing.sm,
+  },
   chipsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: spacing.lg,
+    gap: 10,
+    padding: spacing.md,
   },
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'flex-start',
     gap: 6,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    width: '47%',
+    paddingHorizontal: spacing.sm + 2,
+    paddingVertical: spacing.sm + 2,
+    minHeight: 44,
     borderRadius: radius.pill,
     borderWidth: 1.5,
-    borderColor: 'rgba(232,114,90,0.15)',
-    backgroundColor: colors.surface,
+    borderColor: '#E5E0DD',
+    backgroundColor: '#FFFFFF',
+  },
+  deselectHint: {
+    color: colors.textMuted,
+    textAlign: 'center',
+    marginBottom: spacing.md,
   },
   chipSelected: {
-    backgroundColor: colors.primaryLight,
-    borderColor: colors.primary,
+    backgroundColor: '#FADED4',
+    borderColor: '#E8725A',
   },
   chipText: {
-    fontFamily: 'DMSans_600SemiBold',
-    fontSize: fontSize.sm,
-    color: colors.textMuted,
+    fontWeight: '600',
+    color: '#2D2926',
   },
   chipTextSelected: {
-    color: colors.primaryDark,
+    color: '#C2553F',
+  },
+  chipCheck: {
+    fontWeight: '700',
+    color: '#C2553F',
+    marginLeft: -2,
   },
 
   // Custom symptom input
@@ -425,20 +509,20 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(232,114,90,0.15)',
     backgroundColor: colors.surface,
     paddingHorizontal: spacing.md,
-    fontFamily: 'DMSans_400Regular',
-    fontSize: fontSize.md,
+    fontFamily: 'System',
+    fontSize: 15,
+    fontWeight: '400',
     color: colors.text,
   },
   addBtn: {
     backgroundColor: colors.primary,
     borderRadius: radius.sm,
     paddingHorizontal: spacing.md,
+    minHeight: 44,
     justifyContent: 'center',
   },
   addBtnText: {
-    fontFamily: 'DMSans_700Bold',
     color: '#FFFFFF',
-    fontSize: fontSize.md,
   },
   customTag: {
     flexDirection: 'row',
@@ -452,120 +536,127 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
   },
   customTagText: {
-    fontFamily: 'DMSans_500Medium',
+    fontWeight: '500',
     color: colors.primaryDark,
-    fontSize: fontSize.sm,
+  },
+  customTagRemoveBtn: {
+    minWidth: 44,
+    minHeight: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: -spacing.md,
+    marginVertical: -spacing.xs,
   },
   customTagRemove: {
-    fontFamily: 'DMSans_600SemiBold',
+    fontWeight: '600',
     color: colors.primaryDark,
-    fontSize: fontSize.sm,
-    marginLeft: 2,
   },
 
-  // Step 2
-  timeDisplay: {
+  // Step 2 — Picker layout
+  pickerContainer: {
+    flex: 1,
+    justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: spacing.xl,
+    paddingBottom: spacing.lg,
   },
-  timeText: {
-    fontFamily: 'DMSans_700Bold',
-    fontSize: 48,
-    color: colors.primary,
+  reminderLabel: {
+    fontWeight: '600',
+    color: colors.textMuted,
+    letterSpacing: 1.2,
+    marginBottom: spacing.md,
+    textAlign: 'center',
   },
   changeTimeBtn: {
     alignSelf: 'center',
     padding: spacing.md,
   },
   changeTimeBtnText: {
-    fontFamily: 'DMSans_600SemiBold',
     color: colors.primary,
-    fontSize: fontSize.md,
   },
 
-  // Step 3
-  summaryCard: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    padding: spacing.md,
+  // Step 3 — Confirmation
+  successIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: colors.sage,
+    justifyContent: 'center',
+    alignItems: 'center',
     marginBottom: spacing.md,
-    shadowColor: colors.shadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 1,
-    shadowRadius: 8,
-    elevation: 2,
   },
-  summaryRow: {
+  titleStep3: {
+    color: colors.text,
+    marginBottom: spacing.sm,
+  },
+  sectionLabel: {
+    fontWeight: '600',
+    color: colors.textMuted,
+    letterSpacing: 1.2,
+    marginBottom: spacing.sm,
+  },
+  symptomListCard: {
+    marginBottom: spacing.md,
+  },
+  symptomRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    paddingVertical: spacing.sm,
+    paddingVertical: 12,
+    paddingHorizontal: spacing.md,
   },
-  summaryName: {
-    fontFamily: 'DMSans_500Medium',
-    fontSize: fontSize.md,
+  symptomRowBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(232,114,90,0.08)',
+  },
+  symptomRowName: {
+    flex: 1,
+    fontWeight: '500',
     color: colors.text,
   },
-  summaryReminder: {
-    fontFamily: 'DMSans_400Regular',
-    fontSize: fontSize.md,
-    color: colors.textMuted,
-    textAlign: 'center',
+  checkCircle: {
+    width: 20,
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  reminderInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
     marginTop: spacing.sm,
+  },
+  reminderInfoText: {
+    color: colors.textMuted,
   },
 
   // Nav buttons
   navRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    padding: spacing.lg,
+    padding: spacing.md,
     paddingBottom: spacing.md,
   },
-  backBtn: {
-    padding: spacing.md,
-  },
-  backBtnText: {
-    fontFamily: 'DMSans_500Medium',
-    color: colors.textMuted,
-    fontSize: fontSize.md,
-  },
-  nextBtn: {
-    backgroundColor: colors.primary,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.md,
-    marginLeft: 'auto',
-  },
-  nextBtnText: {
-    fontFamily: 'DMSans_700Bold',
-    color: '#FFFFFF',
-    fontSize: fontSize.md,
-  },
-  step2Btns: {
-    flexDirection: 'row',
-    gap: spacing.md,
-    marginLeft: 'auto',
+  ctaFull: {
+    alignSelf: 'stretch',
   },
   skipBtn: {
     padding: spacing.md,
+    marginTop: spacing.xs,
+    minHeight: 44,
     justifyContent: 'center',
-  },
-  skipBtnText: {
-    fontFamily: 'DMSans_400Regular',
-    color: colors.textMuted,
-    fontSize: fontSize.md,
-  },
-  startBtn: {
-    flex: 1,
-    backgroundColor: colors.primary,
-    borderRadius: radius.md,
-    paddingVertical: spacing.md,
     alignItems: 'center',
   },
-  startBtnText: {
-    fontFamily: 'DMSans_700Bold',
-    color: '#FFFFFF',
-    fontSize: fontSize.lg,
+  skipBtnText: {
+    color: '#7A706B',
+  },
+  backLink: {
+    padding: spacing.sm,
+    minHeight: 44,
+    justifyContent: 'center',
+    marginTop: spacing.xs,
+  },
+  backLinkText: {
+    fontWeight: '500',
+    color: colors.textMuted,
   },
 });

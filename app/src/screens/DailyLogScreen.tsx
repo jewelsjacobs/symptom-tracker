@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
   View,
-  Text,
   StyleSheet,
   ScrollView,
   Pressable,
@@ -12,19 +11,23 @@ import {
   Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
-import { StackNavigationProp } from '@react-navigation/stack';
+import { useRouter } from 'expo-router';
 
-import { colors, spacing, fontSize, radius } from '../theme';
+import { colors, spacing, radius, getSymptomColor } from '../theme';
 import { loadSettings, loadLog, saveLog, getTodayDateString } from '../storage';
 import { AppSettings, DailyLog, LogEntry, SeverityLevel } from '../types';
-import { HomeStackParamList } from '../navigation';
-import GlassCard from '../components/GlassCard';
 import GradientBackground from '../components/GradientBackground';
 import SymptomIcon from '../components/SymptomIcon';
 import SeverityDots from '../components/SeverityDots';
+import EbbText from '../components/EbbText';
 
-type NavProp = StackNavigationProp<HomeStackParamList, 'DailyLog'>;
+/** Convert hex color to rgba string at given opacity */
+function hexToRgba(hex: string, opacity: number): string {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r},${g},${b},${opacity})`;
+}
 
 function formatFriendlyDate(dateStr: string): string {
   const [year, month, day] = dateStr.split('-').map(Number);
@@ -33,7 +36,7 @@ function formatFriendlyDate(dateStr: string): string {
 }
 
 export default function DailyLogScreen() {
-  const navigation = useNavigation<NavProp>();
+  const router = useRouter();
   const insets = useSafeAreaInsets();
   const today = getTodayDateString();
 
@@ -80,7 +83,7 @@ export default function DailyLogScreen() {
       }));
       const log: DailyLog = { date: today, entries, note: note.trim() || undefined };
       await saveLog(log);
-      navigation.goBack();
+      router.back();
     } catch (e) {
       Alert.alert('Error', 'Failed to save your log. Please try again.');
       console.error(e);
@@ -105,14 +108,14 @@ export default function DailyLogScreen() {
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        {/* Header */}
+        {/* Header — stays white on gradient */}
         <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>
-          <Pressable onPress={() => navigation.goBack()} hitSlop={12}>
-            <Text style={styles.backText}>{'\u2039'} Back</Text>
+          <Pressable onPress={() => router.back()} hitSlop={12} style={styles.backBtn}>
+            <EbbText type="subhead" style={styles.backText}>{'\u2039'} Back</EbbText>
           </Pressable>
           <View style={styles.headerCenter}>
-            <Text style={styles.headerTitle}>Today's Log</Text>
-            <Text style={styles.headerDate}>{formatFriendlyDate(today)}</Text>
+            <EbbText type="largeTitle" style={styles.headerTitle}>Today's Log</EbbText>
+            <EbbText type="subhead" style={styles.headerDate}>{formatFriendlyDate(today)}</EbbText>
           </View>
           <View style={{ width: 40 }} />
         </View>
@@ -122,42 +125,52 @@ export default function DailyLogScreen() {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          {/* Symptom cards */}
-          {settings.symptoms.map((symptom) => (
-            <GlassCard key={symptom.id} style={styles.symptomCard}>
-              <View style={styles.cardPad}>
-                <View style={styles.symptomHeader}>
-                  <SymptomIcon name={symptom.name} size={14} color="rgba(255,255,255,0.8)" showBox />
-                  <Text style={styles.symptomName}>{symptom.name}</Text>
+          {/* Symptom cards — solid white */}
+          {settings.symptoms.map((symptom) => {
+            const symptomColor = getSymptomColor(symptom.name);
+            return (
+              <View key={symptom.id} style={[styles.whiteCard, styles.symptomCard]}>
+                <View style={styles.cardPad}>
+                  <View style={styles.symptomHeader}>
+                    <SymptomIcon
+                      name={symptom.name}
+                      size={22}
+                      color={symptomColor}
+                      showBox
+                      boxSize={34}
+                      boxColor={hexToRgba(symptomColor, 0.15)}
+                    />
+                    <EbbText type="headline" style={styles.symptomName}>{symptom.name}</EbbText>
+                  </View>
+                  <SeverityDots
+                    value={severities[symptom.id] ?? null}
+                    onChange={(level) => selectSeverity(symptom.id, level)}
+                    variant="dark"
+                  />
                 </View>
-                <SeverityDots
-                  value={severities[symptom.id] ?? null}
-                  onChange={(level) => selectSeverity(symptom.id, level)}
-                  variant="light"
-                />
               </View>
-            </GlassCard>
-          ))}
+            );
+          })}
 
-          {/* Note card */}
-          <GlassCard style={styles.symptomCard}>
+          {/* Note card — solid white */}
+          <View style={[styles.whiteCard, styles.symptomCard]}>
             <View style={styles.cardPad}>
               <TextInput
                 style={styles.noteInput}
                 value={note}
                 onChangeText={(t) => setNote(t.slice(0, 500))}
-                placeholder="Add a note for today... (optional)"
-                placeholderTextColor="rgba(255,255,255,0.4)"
+                placeholder="Add a note... (optional)"
+                placeholderTextColor="#B5ADA8"
                 multiline
                 numberOfLines={3}
                 textAlignVertical="top"
               />
-              <Text style={styles.charCount}>{note.length}/500</Text>
+              <EbbText type="caption" style={styles.charCount}>{note.length}/500</EbbText>
             </View>
-          </GlassCard>
+          </View>
         </ScrollView>
 
-        {/* Sticky save button */}
+        {/* Sticky save button — solid coral */}
         <View style={[styles.saveContainer, { paddingBottom: Math.max(insets.bottom, spacing.md) }]}>
           <Pressable
             style={({ pressed }) => [
@@ -171,11 +184,11 @@ export default function DailyLogScreen() {
             {isSaving ? (
               <ActivityIndicator color="#FFFFFF" />
             ) : (
-              <Text style={styles.saveButtonText}>Save Log</Text>
+              <EbbText type="button" style={styles.saveButtonText}>Save Log</EbbText>
             )}
           </Pressable>
-          <Pressable onPress={() => navigation.goBack()} hitSlop={8}>
-            <Text style={styles.skipText}>Skip for now</Text>
+          <Pressable onPress={() => router.back()} hitSlop={8} style={styles.skipBtn}>
+            <EbbText type="footnote" style={styles.skipText}>Skip for now</EbbText>
           </Pressable>
         </View>
       </KeyboardAvoidingView>
@@ -192,92 +205,113 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: spacing.md,
     paddingBottom: spacing.md,
   },
+  backBtn: {
+    minHeight: 44,
+    minWidth: 44,
+    justifyContent: 'center',
+  },
   backText: {
-    fontFamily: 'DMSans_500Medium',
-    fontSize: fontSize.md,
-    color: 'rgba(255,255,255,0.8)',
+    fontWeight: '500',
+    color: '#FFFFFF',
   },
   headerCenter: {
     flex: 1,
     alignItems: 'center',
   },
   headerTitle: {
-    fontFamily: 'DMSans_700Bold',
-    fontSize: fontSize.xxl,
     color: '#FFFFFF',
   },
   headerDate: {
-    fontFamily: 'DMSans_400Regular',
-    fontSize: fontSize.md,
-    color: 'rgba(255,255,255,0.65)',
+    color: 'rgba(255,255,255,0.8)',
   },
   content: {
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: spacing.md,
+  },
+
+  // Solid white card — replaces GlassCard
+  whiteCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: radius.lg,
+    shadowColor: 'rgba(0,0,0,0.08)',
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 16,
+    shadowOpacity: 1,
+    elevation: 4,
   },
   symptomCard: {
-    marginBottom: spacing.sm + 4,
+    marginBottom: 12,
   },
   cardPad: {
-    padding: spacing.lg,
+    padding: spacing.md,
   },
+
+  // Dark text on white cards
   symptomHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
   },
   symptomName: {
-    fontFamily: 'DMSans_600SemiBold',
-    fontSize: fontSize.lg,
-    color: '#FFFFFF',
+    color: colors.text,
   },
   noteInput: {
-    fontFamily: 'DMSans_400Regular',
-    fontSize: fontSize.md,
-    color: '#FFFFFF',
+    fontFamily: 'System',
+    fontSize: 15,
+    fontWeight: '400',
+    color: colors.text,
     minHeight: 80,
     paddingTop: 0,
+    backgroundColor: '#F5F1EE',
+    borderWidth: 1,
+    borderColor: '#E5E0DD',
+    borderRadius: 12,
+    padding: 16,
   },
   charCount: {
-    fontFamily: 'DMSans_400Regular',
-    fontSize: fontSize.xs,
-    color: 'rgba(255,255,255,0.4)',
+    color: colors.textMuted,
     textAlign: 'right',
     marginTop: spacing.xs,
   },
+
+  // Save button — solid coral
   saveContainer: {
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: spacing.md,
     paddingTop: spacing.md,
     alignItems: 'center',
   },
   saveButton: {
-    backgroundColor: 'rgba(255,255,255,0.25)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.35)',
+    backgroundColor: '#E8725A',
     borderRadius: 18,
     height: 56,
     justifyContent: 'center',
     alignItems: 'center',
     width: '100%',
+    shadowColor: 'rgba(0,0,0,0.15)',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 1,
+    shadowRadius: 12,
+    elevation: 4,
   },
   saveButtonPressed: {
-    backgroundColor: 'rgba(255,255,255,0.35)',
+    backgroundColor: '#C2553F',
   },
   saveButtonDisabled: {
     opacity: 0.6,
   },
   saveButtonText: {
-    fontFamily: 'DMSans_700Bold',
-    fontSize: fontSize.md,
     color: '#FFFFFF',
   },
+  skipBtn: {
+    minHeight: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   skipText: {
-    fontFamily: 'DMSans_400Regular',
-    fontSize: fontSize.sm,
-    color: 'rgba(255,255,255,0.6)',
+    color: 'rgba(255,255,255,0.7)',
     marginTop: spacing.sm,
   },
 });

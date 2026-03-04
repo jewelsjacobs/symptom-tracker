@@ -1,7 +1,6 @@
 import React, { useCallback, useState } from 'react';
 import {
   View,
-  Text,
   StyleSheet,
   ScrollView,
   Pressable,
@@ -10,15 +9,16 @@ import {
   Platform,
   Modal,
   ActivityIndicator,
+  Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import Svg, { Path, Rect } from 'react-native-svg';
 
-import { colors, spacing, fontSize, radius } from '../theme';
+import { colors, spacing, radius, getSymptomColor } from '../theme';
 import { loadSettings, saveSettings, loadAllLogs } from '../storage';
 import { AppSettings, Symptom } from '../types';
 import { requestNotificationPermission, scheduleReminder, cancelReminder } from '../notifications';
@@ -26,15 +26,23 @@ import { signIn, signUp, signOut, getUser } from '../supabase/auth';
 import { pushToCloud, pullFromCloud } from '../supabase/sync';
 import { usePremium } from '../purchases/usePremium';
 import { restorePurchases } from '../purchases';
-import UpgradePrompt from '../components/UpgradePrompt';
 import { exportPdf } from '../export/generatePdf';
 import { exportCsv } from '../export/generateCsv';
 import SymptomIcon from '../components/SymptomIcon';
 import CreamBackground from '../components/CreamBackground';
 import GlassCard from '../components/GlassCard';
 import CoralButton from '../components/CoralButton';
+import EbbText from '../components/EbbText';
 
 import pkg from '../../package.json';
+
+/** Convert hex color to rgba string at given opacity */
+function hexToRgba(hex: string, opacity: number): string {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r},${g},${b},${opacity})`;
+}
 
 const MAX_FREE_SYMPTOMS = 5;
 const MAX_PREMIUM_SYMPTOMS = 20;
@@ -63,6 +71,7 @@ export default function SettingsScreen() {
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [pickerDate, setPickerDate] = useState<Date>(new Date());
 
+  const router = useRouter();
   const { premium, loading: premiumLoading, refresh: refreshPremium } = usePremium();
   const [exporting, setExporting] = useState(false);
 
@@ -240,17 +249,17 @@ export default function SettingsScreen() {
     <CreamBackground>
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
-          <Text style={styles.title}>Settings</Text>
+          <EbbText type="largeTitle" style={styles.title}>Settings</EbbText>
         </View>
 
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
 
           {/* -- My Symptoms -- */}
-          <Text style={styles.sectionLabel}>MY SYMPTOMS</Text>
+          <EbbText type="caption" style={styles.sectionLabel}>MY SYMPTOMS</EbbText>
           <GlassCard variant="cream" style={styles.section}>
             <View style={styles.cardPad}>
               {settings.symptoms.length === 0 ? (
-                <Text style={styles.emptyText}>No symptoms added yet.</Text>
+                <EbbText type="body" style={styles.emptyText}>No symptoms added yet.</EbbText>
               ) : (
                 settings.symptoms.map((symptom, i) => (
                   <View
@@ -260,11 +269,11 @@ export default function SettingsScreen() {
                       i < settings.symptoms.length - 1 && styles.rowBorder,
                     ]}
                   >
-                    <SymptomIcon name={symptom.name} size={14} color={colors.text} showBox />
-                    <Text style={styles.symptomName}>{symptom.name}</Text>
+                    <SymptomIcon name={symptom.name} size={22} color={getSymptomColor(symptom.name)} showBox boxSize={34} boxColor={hexToRgba(getSymptomColor(symptom.name), 0.15)} />
+                    <EbbText type="body" style={styles.symptomName}>{symptom.name}</EbbText>
                     <Pressable onPress={() => deleteSymptom(symptom.id)} hitSlop={8} style={styles.deleteBtn}>
                       <View style={styles.deleteBtnCircle}>
-                        <Text style={styles.deleteBtnX}>{'\u00D7'}</Text>
+                        <EbbText type="body" style={styles.deleteBtnX}>{'\u00D7'}</EbbText>
                       </View>
                     </Pressable>
                   </View>
@@ -300,25 +309,25 @@ export default function SettingsScreen() {
                     end={{ x: 1, y: 1 }}
                     style={styles.addBtn}
                   >
-                    <Text style={styles.addBtnText}>Add</Text>
+                    <EbbText type="button" style={styles.addBtnText}>Add</EbbText>
                   </LinearGradient>
                 </Pressable>
               </View>
 
-              <Text style={styles.hint}>
+              <EbbText type="caption" style={styles.hint}>
                 {settings.symptoms.length}/{premium ? MAX_PREMIUM_SYMPTOMS : MAX_FREE_SYMPTOMS} symptoms ({premium ? 'premium' : 'free plan'})
-              </Text>
+              </EbbText>
             </View>
           </GlassCard>
 
           {/* -- Reminder -- */}
-          <Text style={styles.sectionLabel}>REMINDER</Text>
+          <EbbText type="caption" style={styles.sectionLabel}>REMINDER</EbbText>
           <GlassCard variant="cream" style={styles.section}>
             <View style={styles.cardPad}>
               <View style={styles.reminderRow}>
-                <Text style={styles.reminderTime}>
+                <EbbText type="headline" style={styles.reminderTime}>
                   {settings.reminderTime ? formatTime(pickerDate) : 'No reminder'}
-                </Text>
+                </EbbText>
                 <View style={styles.reminderActions}>
                   <Pressable
                     onPress={settings.reminderTime ? () => setShowTimePicker(true) : handleSetTimePress}
@@ -329,20 +338,20 @@ export default function SettingsScreen() {
                       end={{ x: 1, y: 1 }}
                       style={styles.reminderChangeBtn}
                     >
-                      <Text style={styles.reminderChangeBtnText}>
+                      <EbbText type="footnote" style={styles.reminderChangeBtnText}>
                         {settings.reminderTime ? 'Change' : 'Set one'}
-                      </Text>
+                      </EbbText>
                     </LinearGradient>
                   </Pressable>
                   {settings.reminderTime ? (
                     <Pressable style={styles.reminderClearBtn} onPress={clearReminderTime}>
-                      <Text style={styles.reminderClearBtnText}>Clear</Text>
+                      <EbbText type="footnote" style={styles.reminderClearBtnText}>Clear</EbbText>
                     </Pressable>
                   ) : null}
                 </View>
               </View>
 
-              {(showTimePicker || Platform.OS === 'ios') && (
+              {showTimePicker && (
                 <DateTimePicker
                   value={pickerDate}
                   mode="time"
@@ -354,100 +363,55 @@ export default function SettingsScreen() {
             </View>
           </GlassCard>
 
-          {/* -- Account -- */}
-          <Text style={styles.sectionLabel}>ACCOUNT</Text>
+          {/* -- Subscription -- */}
+          <EbbText type="caption" style={styles.sectionLabel}>SUBSCRIPTION</EbbText>
           <GlassCard variant="cream" style={styles.section}>
             <View style={styles.cardPad}>
-              {user ? (
+              {/* Current Plan */}
+              <View style={styles.subRow}>
+                <EbbText type="body" style={styles.subRowLabel}>Current Plan</EbbText>
+                <View style={[styles.planBadge, premium && styles.planBadgePremium]}>
+                  <EbbText type="footnote" style={[styles.planBadgeText, premium && styles.planBadgeTextPremium]}>
+                    {premium ? 'Premium \u2713' : 'Free'}
+                  </EbbText>
+                </View>
+              </View>
+
+              <View style={styles.divider} />
+
+              {/* Upgrade to Premium */}
+              {!premium && (
                 <>
-                  <Text style={styles.accountEmail}>{user.email}</Text>
-                  {premium && (
-                    <View style={styles.premiumBadge}>
-                      <Text style={styles.premiumBadgeText}>Premium</Text>
-                    </View>
-                  )}
-                  <Text style={styles.hint}>Your data is backed up to the cloud.</Text>
-                  <Pressable style={styles.signOutBtn} onPress={handleSignOut}>
-                    <Text style={styles.signOutBtnText}>Sign out</Text>
+                  <Pressable style={styles.subRow} onPress={() => router.push('/paywall')}>
+                    <EbbText type="body" style={styles.subRowLabel}>Upgrade to Premium</EbbText>
+                    <EbbText type="headline" style={styles.chevron}>{'\u203A'}</EbbText>
                   </Pressable>
-                </>
-              ) : (
-                <>
-                  <Text style={styles.accountHint}>Sign in to back up your data</Text>
-                  <Pressable style={styles.signInBtn} onPress={() => setShowAuthModal(true)}>
-                    <Text style={styles.signInBtnText}>Sign in / Create account</Text>
-                  </Pressable>
+
+                  <View style={styles.divider} />
                 </>
               )}
+
+              {/* Restore Purchase */}
+              <Pressable
+                style={styles.subRow}
+                onPress={async () => {
+                  const restored = await restorePurchases();
+                  if (restored) {
+                    refreshPremium();
+                    Alert.alert('Restored!', 'Your Premium subscription has been restored.');
+                  } else {
+                    Alert.alert('Nothing to restore', 'No previous Premium purchase found.');
+                  }
+                }}
+              >
+                <EbbText type="body" style={styles.subRowLabel}>Restore Purchase</EbbText>
+                <EbbText type="headline" style={styles.chevron}>{'\u203A'}</EbbText>
+              </Pressable>
             </View>
           </GlassCard>
 
-          {/* -- Premium -- */}
-          {!premium && (
-            <>
-              <Text style={styles.sectionLabel}>PREMIUM</Text>
-              <GlassCard variant="cream" style={styles.section}>
-                <View style={styles.cardPad}>
-                  <View style={styles.premiumHeader}>
-                    <LinearGradient
-                      colors={['#E8725A', '#C2553F']}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 1 }}
-                      style={styles.premiumIconBox}
-                    >
-                      <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
-                        <Path
-                          d="M12 2L15 9H21L16.5 13.5L18 21L12 17L6 21L7.5 13.5L3 9H9L12 2Z"
-                          stroke="#FFFFFF"
-                          strokeWidth={1.8}
-                          strokeLinejoin="round"
-                          fill="none"
-                        />
-                      </Svg>
-                    </LinearGradient>
-                    <View style={styles.premiumInfo}>
-                      <Text style={styles.premiumTitle}>Ebb Premium</Text>
-                      <Text style={styles.premiumSubtitle}>Unlimited history {'\u00B7'} PDF export</Text>
-                    </View>
-                    <Pressable onPress={() => {}}>
-                      <LinearGradient
-                        colors={['#E8725A', '#C2553F']}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 1 }}
-                        style={styles.upgradePill}
-                      >
-                        <Text style={styles.upgradePillText}>Upgrade</Text>
-                      </LinearGradient>
-                    </Pressable>
-                  </View>
-                  {premiumLoading ? (
-                    <ActivityIndicator color={colors.primary} style={{ marginTop: spacing.md }} />
-                  ) : (
-                    <View style={styles.premiumInner}>
-                      <UpgradePrompt onSuccess={refreshPremium} />
-                    </View>
-                  )}
-                  <Pressable
-                    style={styles.restoreBtn}
-                    onPress={async () => {
-                      const restored = await restorePurchases();
-                      if (restored) {
-                        refreshPremium();
-                        Alert.alert('Restored!', 'Your Premium subscription has been restored.');
-                      } else {
-                        Alert.alert('Nothing to restore', 'No previous Premium purchase found.');
-                      }
-                    }}
-                  >
-                    <Text style={styles.restoreBtnText}>Restore purchase</Text>
-                  </Pressable>
-                </View>
-              </GlassCard>
-            </>
-          )}
-
           {/* -- Export -- */}
-          <Text style={styles.sectionLabel}>EXPORT</Text>
+          <EbbText type="caption" style={styles.sectionLabel}>EXPORT</EbbText>
           <GlassCard variant="cream" style={styles.section}>
             <View style={styles.cardPad}>
               <Pressable
@@ -462,10 +426,10 @@ export default function SettingsScreen() {
                   </Svg>
                 </View>
                 <View style={styles.exportInfo}>
-                  <Text style={styles.exportTitle}>Export CSV</Text>
-                  <Text style={styles.exportSub}>All your data as a spreadsheet</Text>
+                  <EbbText type="headline" style={styles.exportTitle}>Export CSV</EbbText>
+                  <EbbText type="caption" style={styles.exportSub}>All your data as a spreadsheet</EbbText>
                 </View>
-                <Text style={styles.chevron}>{'\u203A'}</Text>
+                <EbbText type="headline" style={styles.chevron}>{'\u203A'}</EbbText>
               </Pressable>
 
               <View style={styles.divider} />
@@ -476,7 +440,7 @@ export default function SettingsScreen() {
                   if (!premium) {
                     Alert.alert(
                       'Premium feature',
-                      'PDF export is available with Ebb Premium. Upgrade in the Premium section above.',
+                      'PDF export is available with Ebb Premium. Upgrade in the Subscription section above.',
                       [{ text: 'OK' }]
                     );
                     return;
@@ -498,27 +462,36 @@ export default function SettingsScreen() {
                   </Svg>
                 </View>
                 <View style={styles.exportInfo}>
-                  <Text style={[styles.exportTitle, !premium && styles.exportLocked]}>
+                  <EbbText type="headline" style={[styles.exportTitle, !premium && styles.exportLocked]}>
                     Export PDF Report {!premium ? '(Premium)' : ''}
-                  </Text>
-                  <Text style={styles.exportSub}>For your doctor appointment</Text>
+                  </EbbText>
+                  <EbbText type="caption" style={styles.exportSub}>For your doctor appointment</EbbText>
                 </View>
                 {exporting ? (
                   <ActivityIndicator size="small" color={colors.primary} />
                 ) : (
-                  <Text style={styles.chevron}>{'\u203A'}</Text>
+                  <EbbText type="headline" style={styles.chevron}>{'\u203A'}</EbbText>
                 )}
               </Pressable>
             </View>
           </GlassCard>
 
           {/* -- About -- */}
-          <Text style={styles.sectionLabel}>ABOUT</Text>
+          <EbbText type="caption" style={styles.sectionLabel}>ABOUT</EbbText>
           <GlassCard variant="cream" style={styles.section}>
             <View style={styles.cardPad}>
-              <Text style={styles.aboutName}>Ebb</Text>
-              <Text style={styles.aboutVersion}>v{pkg.version}</Text>
-              <Text style={styles.aboutTagline}>Track in 30 seconds a day</Text>
+              <EbbText type="headline" style={styles.aboutName}>Ebb</EbbText>
+              <EbbText type="footnote" style={styles.aboutVersion}>v{pkg.version}</EbbText>
+              <EbbText type="footnote" style={styles.aboutTagline}>Track in 30 seconds a day</EbbText>
+              <View style={styles.aboutLinks}>
+                <Pressable onPress={() => Linking.openURL('https://example.com/privacy')}>
+                  <EbbText type="footnote" style={styles.aboutLink}>Privacy Policy</EbbText>
+                </Pressable>
+                <EbbText type="footnote" style={styles.aboutLinkSep}>{'\u00B7'}</EbbText>
+                <Pressable onPress={() => Linking.openURL('https://example.com/terms')}>
+                  <EbbText type="footnote" style={styles.aboutLink}>Terms of Use</EbbText>
+                </Pressable>
+              </View>
             </View>
           </GlassCard>
 
@@ -532,9 +505,9 @@ export default function SettingsScreen() {
               <BlurView intensity={80} tint="light" style={styles.modalBlur}>
                 <View style={styles.modalInner}>
                   <View style={styles.handleBar} />
-                  <Text style={styles.modalTitle}>
+                  <EbbText type="largeTitle" style={styles.modalTitle}>
                     {authMode === 'signin' ? 'Sign In' : 'Create Account'}
-                  </Text>
+                  </EbbText>
 
                   <TextInput
                     style={styles.authInput}
@@ -568,11 +541,11 @@ export default function SettingsScreen() {
                     style={styles.authToggle}
                     onPress={() => setAuthMode(authMode === 'signin' ? 'signup' : 'signin')}
                   >
-                    <Text style={styles.authToggleText}>
+                    <EbbText type="footnote" style={styles.authToggleText}>
                       {authMode === 'signin'
                         ? "Don't have an account? Sign up"
                         : 'Already have an account? Sign in'}
-                    </Text>
+                    </EbbText>
                   </Pressable>
                 </View>
               </BlurView>
@@ -587,37 +560,33 @@ export default function SettingsScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   header: {
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: spacing.md,
     paddingTop: spacing.lg,
-    paddingBottom: spacing.md,
+    paddingBottom: spacing.xs,
   },
   title: {
-    fontFamily: 'DMSans_700Bold',
-    fontSize: fontSize.xxxl,
     color: colors.text,
   },
   content: { paddingHorizontal: spacing.md },
   sectionLabel: {
-    fontFamily: 'DMSans_700Bold',
-    fontSize: 10,
-    color: colors.textMuted,
-    letterSpacing: 1.4,
+    fontWeight: '600',
+    color: '#7A706B',
+    letterSpacing: 1.2,
     textTransform: 'uppercase',
     marginTop: spacing.lg,
-    marginBottom: spacing.sm,
+    marginBottom: 6,
     marginLeft: spacing.xs,
   },
   section: {
     // GlassCard handles the styling
   },
   cardPad: {
-    padding: spacing.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 4,
   },
 
   // Symptoms
   emptyText: {
-    fontFamily: 'DMSans_400Regular',
-    fontSize: fontSize.md,
     color: colors.textMuted,
     paddingVertical: spacing.sm,
   },
@@ -625,20 +594,23 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    paddingVertical: 12,
+    paddingVertical: 6,
   },
   rowBorder: {
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0,0,0,0.05)',
+    borderBottomColor: '#F0EBE8',
   },
   symptomName: {
-    fontFamily: 'DMSans_500Medium',
-    fontSize: fontSize.md,
+    fontWeight: '500',
     color: colors.text,
     flex: 1,
   },
   deleteBtn: {
     padding: spacing.xs,
+    minHeight: 44,
+    minWidth: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   deleteBtnCircle: {
     width: 26,
@@ -649,8 +621,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   deleteBtnX: {
-    fontFamily: 'DMSans_600SemiBold',
-    fontSize: 16,
+    fontWeight: '600',
     color: colors.primary,
     marginTop: -1,
   },
@@ -667,8 +638,9 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: 'rgba(194,85,63,0.12)',
     paddingHorizontal: spacing.md,
-    fontFamily: 'DMSans_400Regular',
-    fontSize: fontSize.md,
+    fontFamily: 'System',
+    fontSize: 15,
+    fontWeight: '400',
     color: colors.text,
   },
   addBtn: {
@@ -679,13 +651,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   addBtnText: {
-    fontFamily: 'DMSans_700Bold',
     color: '#FFFFFF',
-    fontSize: fontSize.md,
   },
   hint: {
-    fontFamily: 'DMSans_400Regular',
-    fontSize: fontSize.xs,
     color: colors.textMuted,
     marginTop: spacing.sm,
   },
@@ -697,8 +665,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   reminderTime: {
-    fontFamily: 'DMSans_700Bold',
-    fontSize: fontSize.xl,
     color: colors.primary,
   },
   reminderActions: {
@@ -709,11 +675,12 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     paddingHorizontal: spacing.md + 2,
     paddingVertical: spacing.sm,
+    minHeight: 44,
+    justifyContent: 'center',
   },
   reminderChangeBtnText: {
-    fontFamily: 'DMSans_600SemiBold',
+    fontWeight: '600',
     color: '#FFFFFF',
-    fontSize: fontSize.sm,
   },
   reminderClearBtn: {
     borderWidth: 1.5,
@@ -721,24 +688,22 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     paddingHorizontal: spacing.md + 2,
     paddingVertical: spacing.sm,
+    minHeight: 44,
+    justifyContent: 'center',
     backgroundColor: 'rgba(255,255,255,0.5)',
   },
   reminderClearBtnText: {
-    fontFamily: 'DMSans_500Medium',
+    fontWeight: '500',
     color: colors.textMuted,
-    fontSize: fontSize.sm,
   },
 
   // Account
   accountEmail: {
-    fontFamily: 'DMSans_500Medium',
-    fontSize: fontSize.md,
+    fontWeight: '500',
     color: colors.text,
     marginBottom: spacing.xs,
   },
   accountHint: {
-    fontFamily: 'DMSans_400Regular',
-    fontSize: fontSize.md,
     color: colors.textMuted,
     marginBottom: spacing.md,
   },
@@ -751,86 +716,58 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
   },
   premiumBadgeText: {
-    fontFamily: 'DMSans_700Bold',
-    fontSize: fontSize.xs,
+    fontWeight: '700',
     color: colors.primary,
   },
   signInBtn: {
     borderWidth: 1.5,
     borderColor: colors.primary,
     borderRadius: radius.md,
-    paddingVertical: 12,
+    minHeight: 44,
+    justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: 'rgba(232,114,90,0.04)',
   },
   signInBtnText: {
-    fontFamily: 'DMSans_600SemiBold',
     color: colors.primary,
-    fontSize: fontSize.md,
   },
   signOutBtn: {
     marginTop: spacing.md,
-    borderWidth: 1.5,
-    borderColor: colors.primaryDark,
-    borderRadius: radius.md,
-    paddingVertical: 12,
-    alignItems: 'center',
-  },
-  signOutBtnText: {
-    fontFamily: 'DMSans_600SemiBold',
-    color: colors.primaryDark,
-    fontSize: fontSize.md,
-  },
-
-  // Premium
-  premiumHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  premiumIconBox: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
+    minHeight: 44,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  premiumInfo: {
-    flex: 1,
+  signOutBtnText: {
+    color: '#D64545',
   },
-  premiumTitle: {
-    fontFamily: 'DMSans_700Bold',
-    fontSize: fontSize.md,
-    color: colors.text,
-  },
-  premiumSubtitle: {
-    fontFamily: 'DMSans_400Regular',
-    fontSize: fontSize.sm,
-    color: colors.textMuted,
-    marginTop: 1,
-  },
-  upgradePill: {
-    borderRadius: radius.pill,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-  },
-  upgradePillText: {
-    fontFamily: 'DMSans_700Bold',
-    fontSize: fontSize.sm,
-    color: '#FFFFFF',
-  },
-  premiumInner: {
-    marginTop: spacing.md,
-  },
-  restoreBtn: {
+
+  // Subscription
+  subRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginTop: spacing.md,
-    padding: spacing.sm,
+    justifyContent: 'space-between',
+    minHeight: 44,
+    paddingVertical: 6,
   },
-  restoreBtnText: {
-    fontFamily: 'DMSans_400Regular',
-    color: colors.primaryDark,
-    fontSize: fontSize.xs,
+  subRowLabel: {
+    color: colors.text,
+    fontWeight: '400',
+  },
+  planBadge: {
+    backgroundColor: 'rgba(122,112,107,0.1)',
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.sm + 2,
+    paddingVertical: spacing.xs,
+  },
+  planBadgePremium: {
+    backgroundColor: 'rgba(232,114,90,0.12)',
+  },
+  planBadgeText: {
+    fontWeight: '600',
+    color: '#7A706B',
+  },
+  planBadgeTextPremium: {
+    color: colors.primary,
   },
 
   // Export
@@ -838,7 +775,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    paddingVertical: 12,
+    minHeight: 44,
+    paddingVertical: 10,
   },
   exportIconBox: {
     width: 36,
@@ -851,45 +789,46 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   exportTitle: {
-    fontFamily: 'DMSans_600SemiBold',
-    fontSize: fontSize.md,
     color: colors.text,
   },
   exportLocked: {
     color: colors.textMuted,
   },
   exportSub: {
-    fontFamily: 'DMSans_400Regular',
-    fontSize: fontSize.xs,
     color: colors.textMuted,
     marginTop: 1,
   },
   chevron: {
-    fontSize: fontSize.xl,
     color: colors.textMuted,
   },
   divider: {
     height: 1,
-    backgroundColor: 'rgba(0,0,0,0.05)',
+    backgroundColor: '#F0EBE8',
   },
 
   // About
   aboutName: {
-    fontFamily: 'DMSans_700Bold',
-    fontSize: fontSize.lg,
     color: colors.text,
   },
   aboutVersion: {
-    fontFamily: 'DMSans_400Regular',
-    fontSize: fontSize.sm,
     color: colors.textMuted,
     marginTop: 2,
   },
   aboutTagline: {
-    fontFamily: 'DMSans_400Regular',
-    fontSize: fontSize.sm,
     color: colors.textMuted,
     marginTop: spacing.xs,
+  },
+  aboutLinks: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: spacing.sm,
+    gap: spacing.sm,
+  },
+  aboutLink: {
+    color: colors.primary,
+  },
+  aboutLinkSep: {
+    color: colors.textMuted,
   },
 
   // Auth Modal
@@ -922,8 +861,6 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   modalTitle: {
-    fontFamily: 'DMSans_700Bold',
-    fontSize: 26,
     color: colors.text,
     marginBottom: spacing.lg,
   },
@@ -934,8 +871,9 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: 'rgba(194,85,63,0.18)',
     paddingHorizontal: spacing.md,
-    fontFamily: 'DMSans_400Regular',
-    fontSize: fontSize.md,
+    fontFamily: 'System',
+    fontSize: 15,
+    fontWeight: '400',
     color: colors.text,
     marginBottom: spacing.md,
   },
@@ -946,10 +884,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: spacing.md,
     padding: spacing.sm,
+    minHeight: 44,
+    justifyContent: 'center',
   },
   authToggleText: {
-    fontFamily: 'DMSans_400Regular',
     color: colors.primaryDark,
-    fontSize: fontSize.sm,
   },
 });

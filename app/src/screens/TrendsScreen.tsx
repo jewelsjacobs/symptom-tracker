@@ -1,17 +1,16 @@
 import React, { useCallback, useState } from 'react';
 import {
   View,
-  Text,
   StyleSheet,
   ScrollView,
   Pressable,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useRouter } from 'expo-router';
 import Svg, { Path, Circle, Defs, LinearGradient as SvgGradient, Stop, Line } from 'react-native-svg';
 import { LinearGradient } from 'expo-linear-gradient';
 
-import { colors, severity as severityColors, spacing, fontSize, radius } from '../theme';
+import { colors, severity as severityColors, spacing, radius, getSymptomColor } from '../theme';
 import { loadAllLogs, loadSettings } from '../storage';
 import { AppSettings, DailyLog, SeverityLevel } from '../types';
 import { usePremium } from '../purchases/usePremium';
@@ -19,9 +18,11 @@ import SymptomIcon from '../components/SymptomIcon';
 import CreamBackground from '../components/CreamBackground';
 import GlassCard from '../components/GlassCard';
 import CoralButton from '../components/CoralButton';
+import EbbText from '../components/EbbText';
 
 type Range = '7D' | '30D' | '90D' | 'All';
 const RANGES: Range[] = ['7D', '30D', '90D', 'All'];
+const RANGE_LABELS: Record<Range, string> = { '7D': 'Week', '30D': 'Month', '90D': '3 Months', 'All': 'All' };
 
 function daysAgoDateString(n: number): string {
   const d = new Date();
@@ -50,6 +51,7 @@ function rangeToDays(range: Range): number {
 
 const CHART_W = 280;
 const CHART_H = 60;
+const CHART_PAD = 8; // horizontal inset so edge dots aren't clipped
 
 /** Build a smooth SVG area path from data points */
 function buildAreaPath(
@@ -87,6 +89,7 @@ export default function TrendsScreen() {
   const [logMap, setLogMap] = useState<Map<string, DailyLog>>(new Map());
   const [range, setRange] = useState<Range>('7D');
   const { premium } = usePremium();
+  const router = useRouter();
 
   useFocusEffect(
     useCallback(() => {
@@ -120,11 +123,11 @@ export default function TrendsScreen() {
       <SafeAreaView style={styles.container}>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>Trends</Text>
+          <EbbText type="largeTitle" style={styles.title}>Trends</EbbText>
           {!premium && (
-            <Text style={styles.subtitle}>
-              Last 7 days {'\u00B7'} <Text style={styles.premiumLink}>Unlock history with Premium</Text>
-            </Text>
+            <EbbText type="footnote" style={styles.subtitle}>
+              Last 7 days {'\u00B7'} <EbbText type="footnote" style={styles.premiumLink} onPress={() => router.push('/paywall')}>Unlock history with Premium</EbbText>
+            </EbbText>
           )}
         </View>
 
@@ -146,11 +149,11 @@ export default function TrendsScreen() {
                       end={{ x: 1, y: 1 }}
                       style={styles.togglePillActive}
                     >
-                      <Text style={styles.toggleTextActive}>{r}</Text>
+                      <EbbText type="footnote" style={styles.toggleTextActive}>{RANGE_LABELS[r]}</EbbText>
                     </LinearGradient>
                   ) : (
                     <View style={styles.togglePillInactive}>
-                      <Text style={styles.toggleText}>{r}</Text>
+                      <EbbText type="footnote" style={styles.toggleText}>{RANGE_LABELS[r]}</EbbText>
                     </View>
                   )}
                 </Pressable>
@@ -172,9 +175,9 @@ export default function TrendsScreen() {
                   </Svg>
                 </View>
               </GlassCard>
-              <Text style={styles.paywallTitle}>Unlock full history</Text>
-              <Text style={styles.paywallSub}>See all your trends over time</Text>
-              <CoralButton label="Try Premium Free for 14 days" onPress={() => {}} style={styles.paywallBtn} />
+              <EbbText type="headline" style={styles.paywallTitle}>Unlock full history</EbbText>
+              <EbbText type="body" style={styles.paywallSub}>See all your trends over time</EbbText>
+              <CoralButton label="Try Premium Free for 14 days" onPress={() => router.push('/paywall')} style={styles.paywallBtn} />
             </View>
           </GlassCard>
         ) : !hasAnyLogs ? (
@@ -189,14 +192,14 @@ export default function TrendsScreen() {
                 </Svg>
               </View>
             </GlassCard>
-            <Text style={styles.emptyTitle}>No data yet</Text>
-            <Text style={styles.emptyText}>
+            <EbbText type="headline" style={styles.emptyTitle}>No data yet</EbbText>
+            <EbbText type="body" style={styles.emptyText}>
               Log a few days to see your trends here
-            </Text>
+            </EbbText>
           </View>
         ) : settings.symptoms.length === 0 ? (
           <View style={styles.empty}>
-            <Text style={styles.emptyText}>Add symptoms in Settings to see trends.</Text>
+            <EbbText type="body" style={styles.emptyText}>Add symptoms in Settings to see trends.</EbbText>
           </View>
         ) : (
           <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -215,16 +218,16 @@ export default function TrendsScreen() {
 
               // Map to SVG coordinates
               const svgPoints = dataPoints.map((p) => ({
-                x: dates.length > 1 ? (p.index / (dates.length - 1)) * CHART_W : CHART_W / 2,
-                y: CHART_H - ((p.severity - 1) / 4) * CHART_H,
+                x: dates.length > 1
+                  ? CHART_PAD + (p.index / (dates.length - 1)) * (CHART_W - CHART_PAD * 2)
+                  : CHART_W / 2,
+                y: CHART_PAD + (1 - (p.severity - 1) / 4) * (CHART_H - CHART_PAD * 2),
               }));
 
-              const { linePath, areaPath } = buildAreaPath(svgPoints, CHART_W, CHART_H);
+              const { linePath, areaPath } = buildAreaPath(svgPoints, CHART_W, CHART_H - CHART_PAD);
 
-              // Determine dominant color from average
-              const avgNum = parseFloat(avg) || 3;
-              const colorIdx = Math.max(0, Math.min(4, Math.round(avgNum) - 1));
-              const chartColor = severityColors[colorIdx];
+              // Use symptom's unique color for the chart
+              const chartColor = getSymptomColor(symptom.name);
 
               // Day labels for x-axis
               const labelCount = Math.min(7, dates.length);
@@ -236,22 +239,38 @@ export default function TrendsScreen() {
                 <GlassCard key={symptom.id} variant="cream" style={styles.card}>
                   <View style={styles.cardPad}>
                     <View style={styles.cardHeader}>
-                      <SymptomIcon name={symptom.name} size={14} color={colors.text} showBox />
-                      <Text style={styles.symptomName}>{symptom.name}</Text>
+                      <SymptomIcon name={symptom.name} size={18} color={chartColor} showBox boxSize={32} />
+                      <EbbText type="headline" style={[styles.symptomName, { color: chartColor }]}>{symptom.name}</EbbText>
                       <View style={styles.avgBadge}>
-                        <Text style={styles.avgText}>avg {avg}</Text>
+                        <EbbText type="caption" style={styles.avgText}>avg {avg}</EbbText>
                       </View>
                     </View>
 
                     {/* Area chart */}
                     <View style={styles.chartContainer}>
-                      <Svg width={CHART_W} height={CHART_H + 4} viewBox={`0 -2 ${CHART_W} ${CHART_H + 4}`}>
+                      <Svg width={CHART_W} height={CHART_H} viewBox={`0 0 ${CHART_W} ${CHART_H}`}>
                         <Defs>
                           <SvgGradient id={`grad-${symptom.id}`} x1="0" y1="0" x2="0" y2="1">
                             <Stop offset="0%" stopColor={chartColor} stopOpacity={0.35} />
                             <Stop offset="100%" stopColor={chartColor} stopOpacity={0.05} />
                           </SvgGradient>
                         </Defs>
+                        {/* Gridlines at severity 1, 3, 5 */}
+                        {[1, 3, 5].map((sev) => {
+                          const y = CHART_PAD + (1 - (sev - 1) / 4) * (CHART_H - CHART_PAD * 2);
+                          return (
+                            <Line
+                              key={`grid-${sev}`}
+                              x1={0}
+                              y1={y}
+                              x2={CHART_W}
+                              y2={y}
+                              stroke="rgba(0,0,0,0.06)"
+                              strokeWidth={1}
+                              strokeDasharray="4,4"
+                            />
+                          );
+                        })}
                         {areaPath ? (
                           <>
                             <Path d={areaPath} fill={`url(#grad-${symptom.id})`} />
@@ -263,17 +282,18 @@ export default function TrendsScreen() {
                               strokeLinecap="round"
                               strokeLinejoin="round"
                             />
-                            {/* Today dot */}
-                            {svgPoints.length > 0 && (
+                            {/* Data point dots with severity labels */}
+                            {svgPoints.map((pt, idx) => (
                               <Circle
-                                cx={svgPoints[svgPoints.length - 1].x}
-                                cy={svgPoints[svgPoints.length - 1].y}
-                                r={4}
-                                fill="#FFFFFF"
+                                key={idx}
+                                cx={pt.x}
+                                cy={pt.y}
+                                r={idx === svgPoints.length - 1 ? 4 : 2.5}
+                                fill={idx === svgPoints.length - 1 ? '#FFFFFF' : chartColor}
                                 stroke={chartColor}
-                                strokeWidth={2}
+                                strokeWidth={idx === svgPoints.length - 1 ? 2 : 0}
                               />
-                            )}
+                            ))}
                           </>
                         ) : null}
                       </Svg>
@@ -282,12 +302,12 @@ export default function TrendsScreen() {
                     {/* X-axis labels */}
                     <View style={styles.xLabels}>
                       {labelIndices.map((idx) => (
-                        <Text key={idx} style={[
+                        <EbbText key={idx} type="footnote" style={[
                           styles.xLabel,
                           idx === dates.length - 1 && styles.xLabelToday,
                         ]}>
                           {dayInitial(dates[idx])}
-                        </Text>
+                        </EbbText>
                       ))}
                     </View>
 
@@ -295,7 +315,7 @@ export default function TrendsScreen() {
                     <View style={styles.legend}>
                       {severityColors.map((col, i) => (
                         <View key={i} style={styles.legendItem}>
-                          <Text style={styles.legendNum}>{i + 1}</Text>
+                          <EbbText type="footnote" style={styles.legendNum}>{i + 1}</EbbText>
                           <View style={[styles.legendDot, { backgroundColor: col }]} />
                         </View>
                       ))}
@@ -315,18 +335,14 @@ export default function TrendsScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   header: {
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: spacing.md,
     paddingTop: spacing.lg,
     paddingBottom: spacing.sm,
   },
   title: {
-    fontFamily: 'DMSans_700Bold',
-    fontSize: fontSize.xxxl,
     color: colors.text,
   },
   subtitle: {
-    fontFamily: 'DMSans_400Regular',
-    fontSize: fontSize.sm,
     color: colors.textMuted,
     marginTop: 2,
   },
@@ -336,7 +352,7 @@ const styles = StyleSheet.create({
 
   // Range toggle
   toggleCard: {
-    marginHorizontal: spacing.lg,
+    marginHorizontal: spacing.md,
     marginVertical: spacing.md,
   },
   toggleRow: {
@@ -345,25 +361,29 @@ const styles = StyleSheet.create({
   },
   togglePill: {
     flex: 1,
+    minHeight: 44,
+    justifyContent: 'center',
   },
   togglePillActive: {
+    minHeight: 44,
     paddingVertical: spacing.sm,
     borderRadius: radius.pill,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   togglePillInactive: {
+    minHeight: 44,
     paddingVertical: spacing.sm,
     borderRadius: radius.pill,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   toggleText: {
-    fontFamily: 'DMSans_600SemiBold',
-    fontSize: fontSize.sm,
+    fontWeight: '600',
     color: colors.textMuted,
   },
   toggleTextActive: {
-    fontFamily: 'DMSans_600SemiBold',
-    fontSize: fontSize.sm,
+    fontWeight: '600',
     color: '#FFFFFF',
   },
 
@@ -382,9 +402,6 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   symptomName: {
-    fontFamily: 'DMSans_600SemiBold',
-    fontSize: fontSize.lg,
-    color: colors.text,
     flex: 1,
   },
   avgBadge: {
@@ -394,8 +411,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xs,
   },
   avgText: {
-    fontFamily: 'DMSans_700Bold',
-    fontSize: fontSize.xs,
+    fontWeight: '700',
     color: colors.primaryDark,
   },
 
@@ -410,13 +426,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xs,
   },
   xLabel: {
-    fontFamily: 'DMSans_500Medium',
-    fontSize: 10,
     color: colors.textMuted,
   },
   xLabelToday: {
     color: colors.primary,
-    fontFamily: 'DMSans_700Bold',
+    fontWeight: '700',
   },
 
   // Legend
@@ -432,8 +446,6 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   legendNum: {
-    fontFamily: 'DMSans_400Regular',
-    fontSize: 10,
     color: colors.textMuted,
   },
   legendDot: { width: 8, height: 8, borderRadius: 4 },
@@ -454,14 +466,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   emptyTitle: {
-    fontFamily: 'DMSans_700Bold',
-    fontSize: fontSize.xl,
     color: colors.text,
     marginBottom: spacing.sm,
   },
   emptyText: {
-    fontFamily: 'DMSans_400Regular',
-    fontSize: fontSize.md,
     color: colors.textMuted,
     textAlign: 'center',
   },
@@ -483,14 +491,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   paywallTitle: {
-    fontFamily: 'DMSans_700Bold',
-    fontSize: fontSize.xl,
     color: colors.text,
     marginBottom: spacing.xs,
   },
   paywallSub: {
-    fontFamily: 'DMSans_400Regular',
-    fontSize: fontSize.md,
     color: colors.textMuted,
     marginBottom: spacing.lg,
   },

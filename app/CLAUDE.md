@@ -6,75 +6,74 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Ebb** — Chronic illness symptom tracker. React Native (Expo) app targeting iOS-first. Users log symptom severity (1-5 scale) daily in under 30 seconds. Freemium model with a 5-symptom free tier.
 
-## Agent Board Integration
+## Design Authority
 
-You share this project with Builder (a design/planning agent). Coordinate via Agent Board API:
+The ONLY design specification is `design/specs/FINAL-DESIGN-REVISION.md`. Read it completely before making any visual changes. There are no other active design docs. All previous specs have been archived to `design/_archive/` and must NOT be referenced. Save new screenshots to `design/mockups/` as you complete each screen.
+
+## Commands
 
 ```bash
-# List your tasks
-curl -s http://localhost:3456/api/tasks | python3 -c "
-import json,sys
-for t in json.load(sys.stdin):
-  if t['projectId']=='proj_c991be755405a07e':
-    print(f\"[{t['status']}] {t['title']} ({t['id']})\")"
-
-# Pick up a task (move to doing)
-curl -s -X PATCH http://localhost:3456/api/tasks/TASK_ID \
-  -H "Content-Type: application/json" \
-  -d '{"status":"doing"}'
-
-# Complete a task
-curl -s -X PATCH http://localhost:3456/api/tasks/TASK_ID \
-  -H "Content-Type: application/json" \
-  -d '{"status":"done"}'
-
-# Create a new task
-curl -s -X POST http://localhost:3456/api/tasks \
-  -H "Content-Type: application/json" \
-  -d '{"title":"...","projectId":"proj_c991be755405a07e","assignee":"claude-code","priority":"medium","tags":["phase-1","dev"],"status":"backlog"}'
-
-# Add a comment to a task (to communicate with Builder)
-curl -s -X POST http://localhost:3456/api/tasks/TASK_ID/comments \
-  -H "Content-Type: application/json" \
-  -d '{"author":"claude-code","text":"Done — implemented in src/screens/OnboardingScreen.tsx"}'
+npm start          # Start Expo dev server
+npm run ios        # Launch in iOS simulator
+npm run android    # Launch in Android emulator
+npm run web        # Launch web preview
+npx tsc --noEmit   # Type-check (no linter or test runner configured yet)
 ```
 
-### Workflow
-1. Check Agent Board for tasks tagged with dev/backend/setup in the Ebb project (proj_c991be755405a07e)
-2. Pick up tasks in phase order (phase-0 → phase-1 → etc.)
-3. Move tasks to "doing" when starting, "done" when finishing
-4. If you need a design asset from Builder, create a task assigned to "builder" with tag "design" and a clear description of what you need
-5. Check design/ directory for wireframes and specs Builder has created before implementing screens
-6. After completing work, add a comment to the task noting what files were changed
-7. Skip tasks tagged "design" only — those belong to Builder
-8. Work autonomously through coding tasks without waiting for permission
+Package manager is **npm** (not yarn/pnpm). Run `npm install` after pulling.
 
-## Pre-Commit Workflow (REQUIRED before every git commit)
+## Architecture
 
-Before committing any code changes, always follow this sequence:
+**Entry flow:** `expo-router/entry` → `src/app/_layout.tsx` (root layout — loads settings, providers, onboarding guard).
 
-1. **Run Expo Doctor:**
-   ```bash
-   cd /Users/openclaw/projects/symptom-tracker/app && npx expo-doctor
-   ```
+**Navigation structure** (Expo Router file-based routing in `src/app/`):
+- `_layout.tsx` — Root `<Stack>`: `(tabs)` + `onboarding`, with `<Redirect>` to onboarding if needed
+- `(tabs)/_layout.tsx` — `<Tabs>` with custom `BottomNav` tab bar
+- `(tabs)/home/_layout.tsx` — `<Stack>` for Home → DailyLog push navigation
+- `(tabs)/home/index.tsx` → HomeScreen
+- `(tabs)/home/daily-log.tsx` → DailyLogScreen
+- `(tabs)/history.tsx` → HistoryScreen
+- `(tabs)/trends.tsx` → TrendsScreen
+- `(tabs)/settings.tsx` → SettingsScreen
+- `onboarding.tsx` → OnboardingScreen
 
-2. **Evaluate each issue using this judgment guide:**
-   - ✅ **Auto-fix:** Outdated package versions, missing/incorrect config fields, SDK version mismatches, wrong package.json fields
-   - ✅ **Auto-fix:** Warnings about `app.json` schema, missing `bundleIdentifier`, icon/splash config issues
-   - ⚠️ **Ask before fixing:** Major SDK version upgrades (e.g. Expo 54 → 55), native module breaking changes
-   - ⚠️ **Ask before fixing:** Anything that could remove or replace a dependency
+Onboarding completion is signaled via `AppContext` (`src/context/AppContext.tsx`). The `useAppContext().completeOnboarding()` call triggers a `<Redirect>` to tabs.
 
-3. **Apply safe fixes**, then re-run `npx expo-doctor` to confirm clean output.
+**Data layer** (`src/storage/index.ts`):
+- All data persisted locally via AsyncStorage — no backend yet
+- Settings stored under key `@symptom_tracker_settings`
+- Daily logs stored per-date under `@symptom_tracker_log_{YYYY-MM-DD}`
+- `loadAllLogs()` scans all AsyncStorage keys by prefix
 
-4. **Only commit once expo-doctor passes** (or remaining issues are explicitly flagged/accepted).
+**Core types** (`src/types/index.ts`):
+- `Symptom` — `{id, name, createdAt}`
+- `SeverityLevel` — `1 | 2 | 3 | 4 | 5`
+- `LogEntry` — `{symptomId, severity}`
+- `DailyLog` — `{date (YYYY-MM-DD), entries, note?}`
+- `AppSettings` — `{symptoms, reminderTime, hasCompletedOnboarding, accountEmail}`
 
-5. **After committing a completed feature**, push an OTA update so it can be tested on device immediately:
-   ```bash
-   cd /Users/openclaw/projects/symptom-tracker/app && eas update --branch preview --message "brief description of what changed"
-   ```
-   This delivers the update to the Preview build on the iPhone without requiring a full rebuild.
+**Design system** (`src/theme.ts`):
+- Being updated per `design/specs/FINAL-DESIGN-REVISION.md`
+- Warm coral palette with symptom-specific colors
+- System fonts (SF Pro) with Dynamic Type support
+- See FINAL-DESIGN-REVISION.md for all design tokens
 
-> Note: A full `eas build --profile preview --platform ios` is only needed when native code changes — new native packages, plugin changes, or `app.json` native config changes. For JS/TS/asset-only changes, always use `eas update` instead.
+## Conventions
+
+- TypeScript strict mode. Types live in `src/types/`.
+- Functional components with hooks only — no class components.
+- Screens are self-contained in `src/screens/` with co-located styles.
+- Shared components live in `src/components/`.
+- Dates are always `YYYY-MM-DD` strings. Times are `HH:MM` strings.
+- Free tier limit: `MAX_FREE_SYMPTOMS = 5`.
+
+## Key Dependencies
+
+- Expo ~54, React Native 0.81, React 19
+- `expo-router` (file-based routing, built on `@react-navigation`) for routing
+- `@react-native-async-storage/async-storage` for persistence
+- `@react-native-community/datetimepicker` for reminder time picker
+- `expo-notifications` for daily reminders
 
 ## Environment Variables
 
@@ -91,33 +90,7 @@ All secrets are stored in `.env` (gitignored — never committed). The app reads
 ### Critical rules
 - **Never hardcode secrets** in source files. Always use `process.env.EXPO_PUBLIC_*`.
 - **Never commit `.env`** — it is gitignored. Use `.env.example` to document required variables.
-- **EAS must have all variables set** or the build will silently receive empty strings, causing runtime crashes (e.g. RevenueCat "Wrong API Key" error, Supabase auth failures).
-- `EXPO_PUBLIC_` prefix is required for variables to be accessible in React Native code. Variables without this prefix are only available in Node/EAS build scripts.
-
-### When you add a new environment variable
-1. Add it to `.env` locally
-2. Add a placeholder to `.env.example`
-3. Register it in EAS for ALL relevant environments:
-   ```bash
-   # Add to preview environment
-   eas env:create --name VAR_NAME --value "value" --environment preview --visibility plaintext
-
-   # Add to production environment
-   eas env:create --name VAR_NAME --value "value" --environment production --visibility plaintext
-
-   # Verify all vars are registered
-   eas env:list --environment preview
-   eas env:list --environment production
-   ```
-4. **A full rebuild is required** after adding new env vars — OTA update (`eas update`) is not sufficient since variables are baked in at build time.
-
-### Diagnosing env var problems on device
-Symptoms: app crashes on launch, "Wrong API Key" dialogs, auth failures on device but not in simulator.
-Fix:
-1. Check what EAS has: `eas env:list --environment preview`
-2. Add or update the missing var: `eas env:create` or `eas env:update`
-3. Trigger a fresh build — do NOT just run `eas update`, it won't pick up env changes.
-4. Delete the old app from iPhone completely before installing the new build.
+- `EXPO_PUBLIC_` prefix is required for variables to be accessible in React Native code.
 
 ### When to use eas update vs eas build
 | Change type | Command |
@@ -126,72 +99,33 @@ Fix:
 | New native package, plugin, app.json native config | `eas build --profile preview --platform ios` |
 | New or changed environment variable | `eas build --profile preview --platform ios` |
 
-## Commands
+## Pre-Commit Workflow
 
-```bash
-npm start          # Start Expo dev server
-npm run ios        # Launch in iOS simulator
-npm run android    # Launch in Android emulator
-npm run web        # Launch web preview
-npx tsc --noEmit   # Type-check (no linter or test runner configured yet)
-```
+Before committing any code changes:
 
-Package manager is **npm** (not yarn/pnpm). Run `npm install` after pulling.
+1. Run `npx expo-doctor` and fix safe issues automatically
+2. Ask before fixing major SDK upgrades or dependency removals
+3. Re-run until clean, then commit
+4. After committing a completed feature, push OTA: `eas update --branch preview --message "description"`
 
-## Architecture
+## Visual QA Workflow
 
-**Entry flow:** `index.ts` → `App.tsx` → `RootNavigator` (loads settings from AsyncStorage, routes to Onboarding or Main).
+### Tools
+- **Maestro** — Navigate simulator and capture screenshots. Also used for E2E testing.
+- **pixelmatch** via `scripts/compare-screens.mjs` — Generate pixel-level diff images.
 
-**Navigation structure** (`src/navigation/index.tsx`):
-- `RootStack` — conditional: Onboarding or Main
-- `MainTab` — bottom tabs: HomeStack | History | Trends | Settings
-- `HomeStack` — nested stack: Home → DailyLog
+### Rules
+- **NEVER** rely on vision alone to compare screens. Always use the diff tool.
+- **ALWAYS** use `scripts/compare-screens.mjs` to generate diff images before declaring a screen done.
 
-Onboarding completion is signaled via `AppContext` (React Context). The `useAppContext().completeOnboarding()` call swaps the root route.
+### Comparison Workflow
+1. Capture screenshot with Maestro
+2. Compare: `node scripts/compare-screens.mjs design/mockups/[screen].png screenshots/[screen].png diffs/[screen]-diff.png`
+3. Fix red areas in the diff
+4. Repeat until diff percentage is below 1%
 
-**Data layer** (`src/storage/index.ts`):
-- All data persisted locally via AsyncStorage — no backend yet
-- Settings stored under key `@symptom_tracker_settings`
-- Daily logs stored per-date under `@symptom_tracker_log_{YYYY-MM-DD}`
-- `loadAllLogs()` scans all AsyncStorage keys by prefix
-
-**Core types** (`src/types/index.ts`):
-- `Symptom` — `{id, name, createdAt}`
-- `SeverityLevel` — `1 | 2 | 3 | 4 | 5`
-- `LogEntry` — `{symptomId, severity}`
-- `DailyLog` — `{date (YYYY-MM-DD), entries, note?}`
-- `AppSettings` — `{symptoms, reminderTime, hasCompletedOnboarding, accountEmail}`
-
-**Design system** (`src/theme.ts`):
-- Exports `colors`, `severity` (color array indexed by severity-1), `spacing`, `fontSize`, `radius`, `fontWeight`
-- Warm coral palette (`primary: #E8725A`, `background: #FDF8F5`) — "Warm Topographic + Liquid Glass" theme
-- Font: DM Sans (loaded in App.tsx via `@expo-google-fonts/dm-sans`)
-- Component library in `src/components/`: GlassCard, GradientBackground, SeverityDots, SymptomIcon, BottomNav
-- Full spec: `design/specs/design-system-v2.md`
-
-## Conventions
-
-- TypeScript strict mode. Types live in `src/types/`.
-- Functional components with hooks only — no class components.
-- Screens are self-contained in `src/screens/` with co-located styles.
-- `src/components/` exists but is empty — extract shared components there when needed.
-- Dates are always `YYYY-MM-DD` strings. Times are `HH:MM` strings.
-- Free tier limit: `MAX_FREE_SYMPTOMS = 5`.
-
-## Key Dependencies
-
-- Expo ~54, React Native 0.81, React 19
-- `@react-navigation` (stack + bottom-tabs) for routing
-- `@react-native-async-storage/async-storage` for persistence
-- `@react-native-community/datetimepicker` for reminder time picker
-- `expo-notifications` for daily reminders
-
-## Design Assets
-
-Builder saves wireframes and design specs to:
-- `~/projects/symptom-tracker/design/wireframes/` — HTML/CSS wireframes per screen
-- `~/projects/symptom-tracker/design/specs/` — design brief, palette, typography
-- `~/projects/symptom-tracker/design/mockups/` — higher fidelity mockups
-- `~/projects/symptom-tracker/design/assets/` — icons, images
-
-Always check these directories before implementing a screen to match the intended design.
+### Visual QA Directories
+- `screenshots/` — Maestro-captured screenshots (gitignored)
+- `diffs/` — Generated diff images (gitignored)
+- `maestro/` — Capture flows and E2E tests
+- `scripts/compare-screens.mjs` — The pixelmatch comparison script

@@ -1,28 +1,25 @@
 import React from 'react';
-import { StyleSheet, View, Pressable, Text } from 'react-native';
+import { StyleSheet, View, Pressable } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import Svg, { Path, Rect, Line, Circle } from 'react-native-svg';
-import { colors, fontSize, fontWeight, spacing } from '../theme';
+import { colors, spacing } from '../theme';
+import EbbText from './EbbText';
 
 const ICON_SIZE = 20;
 const STROKE = 1.5;
 
-/**
- * Floating glass pill bottom navigation bar.
- * Pass as `tabBar` prop to createBottomTabNavigator.
- */
 export default function BottomNav({ state, descriptors, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
 
   return (
     <View style={[styles.wrapper, { paddingBottom: Math.max(insets.bottom, 8) }]}>
-      <BlurView intensity={80} tint="light" style={styles.pill}>
+      <BlurView intensity={95} tint="light" style={styles.pill}>
         <View style={styles.inner}>
           {state.routes.map((route, index) => {
             const focused = state.index === index;
-            const color = focused ? colors.primary : colors.textMuted;
+            const color = focused ? '#E8725A' : '#7A706B';
             const label = getLabel(route.name);
 
             return (
@@ -44,9 +41,7 @@ export default function BottomNav({ state, descriptors, navigation }: BottomTabB
                 accessibilityLabel={label}
               >
                 <NavIcon name={route.name} focused={focused} color={color} />
-                {focused && (
-                  <Text style={[styles.label, { color }]}>{label}</Text>
-                )}
+                <EbbText type="caption" style={[styles.label, { color }]}>{label}</EbbText>
                 {focused && <View style={styles.dot} />}
               </Pressable>
             );
@@ -59,10 +54,10 @@ export default function BottomNav({ state, descriptors, navigation }: BottomTabB
 
 function getLabel(routeName: string): string {
   switch (routeName) {
-    case 'HomeStack': return 'Home';
-    case 'History': return 'History';
-    case 'Trends': return 'Trends';
-    case 'Settings': return 'Settings';
+    case 'home': return 'Home';
+    case 'history': return 'History';
+    case 'trends': return 'Trends';
+    case 'settings': return 'Settings';
     default: return routeName;
   }
 }
@@ -71,7 +66,7 @@ function NavIcon({ name, focused, color }: { name: string; focused: boolean; col
   const props = { width: ICON_SIZE, height: ICON_SIZE, viewBox: '0 0 20 20' };
 
   switch (name) {
-    case 'HomeStack':
+    case 'home':
       return focused ? (
         <Svg {...props}>
           <Path
@@ -94,7 +89,7 @@ function NavIcon({ name, focused, color }: { name: string; focused: boolean; col
         </Svg>
       );
 
-    case 'History':
+    case 'history':
       return focused ? (
         <Svg {...props}>
           <Rect x={3} y={3} width={14} height={14} rx={2} fill={color} stroke={color} strokeWidth={STROKE} />
@@ -111,7 +106,7 @@ function NavIcon({ name, focused, color }: { name: string; focused: boolean; col
         </Svg>
       );
 
-    case 'Trends':
+    case 'trends':
       return (
         <Svg {...props}>
           <Path
@@ -132,7 +127,7 @@ function NavIcon({ name, focused, color }: { name: string; focused: boolean; col
         </Svg>
       );
 
-    case 'Settings':
+    case 'settings':
       return (
         <Svg {...props}>
           <Line x1={4} y1={5} x2={16} y2={5} stroke={color} strokeWidth={STROKE} strokeLinecap="round" />
@@ -162,14 +157,14 @@ const styles = StyleSheet.create({
     borderRadius: 100,
     overflow: 'hidden',
     width: '100%',
-    maxWidth: 320,
+    maxWidth: 340,
   },
   inner: {
     flexDirection: 'row',
-    backgroundColor: 'rgba(255,255,255,0.75)',
+    backgroundColor: 'rgba(255,255,255,0.92)',
     borderRadius: 100,
     borderWidth: 1,
-    borderColor: colors.borderGlass,
+    borderColor: 'rgba(0,0,0,0.06)',
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
   },
@@ -179,17 +174,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: spacing.xs,
     minHeight: 44,
+    minWidth: 60,
   },
   label: {
-    fontFamily: 'DMSans_600SemiBold',
-    fontSize: fontSize.xs,
     marginTop: 2,
   },
   dot: {
     width: 4,
     height: 4,
     borderRadius: 2,
-    backgroundColor: colors.primary,
+    backgroundColor: '#E8725A',
     marginTop: 3,
   },
 });

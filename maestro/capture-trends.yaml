@@ -1,0 +1,8 @@
+# Capture the trends screen
+appId: com.julia.ebb
+---
+- launchApp
+- waitForAnimationToEnd
+- tapOn: "Trends"
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/trends

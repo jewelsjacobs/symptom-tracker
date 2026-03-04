@@ -8,6 +8,10 @@ type Props = {
   color?: string;
   /** Wrap icon in a rounded box with semi-transparent background */
   showBox?: boolean;
+  /** Override box background color (defaults to rgba(255,255,255,0.12)) */
+  boxColor?: string;
+  /** Override box dimensions (defaults to 28) */
+  boxSize?: number;
 };
 
 const STROKE_WIDTH = 1.4;
@@ -21,13 +25,19 @@ export default function SymptomIcon({
   size = 16,
   color = '#FFFFFF',
   showBox = false,
+  boxColor,
+  boxSize = 28,
 }: Props) {
   const icon = renderIcon(name.toLowerCase(), size, color);
 
   if (!showBox) return icon;
 
   return (
-    <View style={styles.box}>
+    <View style={[
+      styles.box,
+      { width: boxSize, height: boxSize, borderRadius: boxSize * 0.29 },
+      boxColor ? { backgroundColor: boxColor } : undefined,
+    ]}>
       {icon}
     </View>
   );
@@ -158,12 +168,15 @@ function renderIcon(name: string, size: number, color: string) {
     );
   }
 
-  // Sleep Quality / crescent moon
+  // Sleep Quality / geometric crescent moon (G4)
+  // Outer arc: r=6.5 circle centered ~(7.5, 8), bulges left
+  // Inner arc: r=6 circle centered ~(13.4, 8), carves out right side
+  // Crescent spans x≈1 to x=11, well-centered in 16×16 viewBox
   if (name.includes('sleep') || name.includes('insomnia')) {
     return (
       <Svg {...props}>
         <Path
-          d="M10 2.5 A5 5 0 1 0 13 6 A3.5 3.5 0 0 1 10 2.5"
+          d="M 11 2.5 A 6.5 6.5 0 1 0 11 13.5 A 6 6 0 0 1 11 2.5 Z"
           stroke={color}
           strokeWidth={STROKE_WIDTH}
           fill="none"
@@ -200,9 +213,6 @@ function renderIcon(name: string, size: number, color: string) {
 
 const styles = StyleSheet.create({
   box: {
-    width: 28,
-    height: 28,
-    borderRadius: 8,
     backgroundColor: 'rgba(255,255,255,0.12)',
     justifyContent: 'center',
     alignItems: 'center',

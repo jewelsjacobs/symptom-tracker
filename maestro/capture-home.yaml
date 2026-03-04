@@ -1,0 +1,6 @@
+# Capture the home screen for Visual QA comparison
+appId: com.julia.ebb
+---
+- launchApp
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/home-screen

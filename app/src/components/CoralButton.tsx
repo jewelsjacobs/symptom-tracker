@@ -1,7 +1,8 @@
 import React from 'react';
-import { Pressable, Text, StyleSheet, ActivityIndicator, ViewStyle } from 'react-native';
+import { Pressable, StyleSheet, ActivityIndicator, ViewStyle } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { fontSize, radius } from '../theme';
+import { radius } from '../theme';
+import EbbText from './EbbText';
 
 type Props = {
   label: string;
@@ -35,7 +36,7 @@ export default function CoralButton({ label, onPress, disabled, loading, style }
         {loading ? (
           <ActivityIndicator color="#FFFFFF" />
         ) : (
-          <Text style={styles.label}>{label}</Text>
+          <EbbText type="button" style={styles.label}>{label}</EbbText>
         )}
       </LinearGradient>
     </Pressable>
@@ -58,8 +59,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   label: {
-    fontFamily: 'DMSans_700Bold',
-    fontSize: fontSize.lg,
     color: '#FFFFFF',
   },
   disabled: {

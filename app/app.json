@@ -2,6 +2,7 @@
   "expo": {
     "name": "Ebb",
     "slug": "ebb-symptom-tracker",
+    "scheme": "ebb",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -30,12 +31,14 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.julia.ebb"
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
+      "expo-splash-screen",
       "@react-native-community/datetimepicker",
       [
         "expo-notifications",
@@ -44,8 +47,12 @@
           "color": "#E8725A"
         }
       ],
-      "expo-font"
+      "expo-font",
+      "expo-router"
     ],
+    "experiments": {
+      "typedRoutes": true
+    },
     "extra": {
       "eas": {
         "projectId": "e9929027-5470-48e4-8ad3-462b1bcbfacf"

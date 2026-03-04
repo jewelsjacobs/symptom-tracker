@@ -1,0 +1,14 @@
+# Capture onboarding step 3 (confirmation)
+appId: com.julia.ebb
+---
+- clearState
+- launchApp
+- waitForAnimationToEnd
+- tapOn: "Pain"
+- tapOn: "Fatigue"
+- tapOn: "Brain Fog"
+- tapOn: "Next →"
+- waitForAnimationToEnd
+- tapOn: "Set Reminder →"
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/onboarding-confirmation

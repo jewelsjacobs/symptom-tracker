@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator, Alert, StyleSheet } from 'react-native';
+import { View, TouchableOpacity, ActivityIndicator, Alert, StyleSheet } from 'react-native';
 import { PurchasesPackage } from 'react-native-purchases';
 import { getOfferings, purchasePackage } from '../purchases';
-import { colors, spacing, fontSize, radius } from '../theme';
+import { colors, spacing, radius } from '../theme';
+import EbbText from './EbbText';
 
 type Props = { onSuccess: () => void };
 
@@ -33,13 +34,13 @@ export default function UpgradePrompt({ onSuccess }: Props) {
 
   return (
     <View>
-      <Text style={styles.headline}>Unlock Ebb Premium</Text>
-      <Text style={styles.features}>
+      <EbbText type="headline" style={styles.headline}>Unlock Ebb Premium</EbbText>
+      <EbbText type="subhead" style={styles.features}>
         {'\u2713'} Unlimited symptoms{'\n'}
         {'\u2713'} Full history (beyond 30 days){'\n'}
         {'\u2713'} Doctor-ready PDF export{'\n'}
         {'\u2713'} All-time trends charts
-      </Text>
+      </EbbText>
       {packages.map((pkg) => (
         <TouchableOpacity
           key={pkg.identifier}
@@ -47,8 +48,8 @@ export default function UpgradePrompt({ onSuccess }: Props) {
           onPress={() => handlePurchase(pkg)}
           disabled={loading}
         >
-          <Text style={styles.pkgLabel}>{pkg.product.title}</Text>
-          <Text style={styles.pkgPrice}>{pkg.product.priceString}</Text>
+          <EbbText type="headline" style={styles.pkgLabel}>{pkg.product.title}</EbbText>
+          <EbbText type="body" style={styles.pkgPrice}>{pkg.product.priceString}</EbbText>
         </TouchableOpacity>
       ))}
       {loading && <ActivityIndicator color={colors.primary} style={{ marginTop: spacing.sm }} />}
@@ -57,8 +58,8 @@ export default function UpgradePrompt({ onSuccess }: Props) {
 }
 
 const styles = StyleSheet.create({
-  headline: { fontSize: fontSize.lg, fontWeight: '700', color: colors.text, marginBottom: spacing.xs },
-  features: { fontSize: fontSize.md, color: colors.textMuted, lineHeight: 22, marginBottom: spacing.md },
+  headline: { color: colors.text, marginBottom: spacing.xs },
+  features: { color: colors.textMuted, lineHeight: 22, marginBottom: spacing.md },
   pkgBtn: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -68,6 +69,6 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     marginBottom: spacing.sm,
   },
-  pkgLabel: { color: '#fff', fontWeight: '600', fontSize: fontSize.md },
-  pkgPrice: { color: '#fff', fontSize: fontSize.md },
+  pkgLabel: { color: '#fff' },
+  pkgPrice: { color: '#fff' },
 });

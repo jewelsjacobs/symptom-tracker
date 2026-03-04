@@ -1,7 +1,6 @@
 import React, { useCallback, useState } from 'react';
 import {
   View,
-  Text,
   StyleSheet,
   FlatList,
   Pressable,
@@ -9,11 +8,11 @@ import {
   ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { BlurView } from 'expo-blur';
 import Svg, { Rect, Path } from 'react-native-svg';
 
-import { colors, severity as severityColors, spacing, fontSize, radius } from '../theme';
+import { colors, severity as severityColors, spacing, radius, getSymptomColor } from '../theme';
 import { loadAllLogs, loadSettings } from '../storage';
 import { AppSettings, DailyLog, SeverityLevel } from '../types';
 import { usePremium } from '../purchases/usePremium';
@@ -21,6 +20,7 @@ import SymptomIcon from '../components/SymptomIcon';
 import CreamBackground from '../components/CreamBackground';
 import GlassCard from '../components/GlassCard';
 import CoralButton from '../components/CoralButton';
+import EbbText from '../components/EbbText';
 
 const HISTORY_FREE_DAYS = 30;
 
@@ -75,6 +75,7 @@ function dayNumber(dateStr: string): string {
 }
 
 export default function HistoryScreen() {
+  const router = useRouter();
   const [logs, setLogs] = useState<DailyLog[]>([]);
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [selected, setSelected] = useState<DailyLog | null>(null);
@@ -112,8 +113,8 @@ export default function HistoryScreen() {
       <SafeAreaView style={styles.container}>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>History</Text>
-          <Text style={styles.subtitle}>{logs.length} days logged</Text>
+          <EbbText type="largeTitle" style={styles.title}>History</EbbText>
+          <EbbText type="body" style={styles.subtitle}>{logs.length} days logged</EbbText>
         </View>
 
         {/* Calendar strip */}
@@ -131,7 +132,7 @@ export default function HistoryScreen() {
                   style={styles.calDay}
                   onPress={() => log && setSelected(log)}
                 >
-                  <Text style={styles.calDayLabel}>{dayInitial(date)}</Text>
+                  <EbbText type="caption" style={styles.calDayLabel}>{dayInitial(date)}</EbbText>
                   <View
                     style={[
                       styles.calCircle,
@@ -139,13 +140,13 @@ export default function HistoryScreen() {
                       isToday && !fillColor && styles.calCircleToday,
                     ]}
                   >
-                    <Text style={[
+                    <EbbText type="footnote" style={[
                       styles.calDayNum,
                       fillColor ? styles.calDayNumFilled : undefined,
                       isToday && !fillColor ? styles.calDayNumToday : undefined,
                     ]}>
                       {dayNumber(date)}
-                    </Text>
+                    </EbbText>
                   </View>
                 </Pressable>
               );
@@ -164,10 +165,15 @@ export default function HistoryScreen() {
                 </Svg>
               </View>
             </GlassCard>
-            <Text style={styles.emptyTitle}>No logs yet</Text>
-            <Text style={styles.emptyText}>
+            <EbbText type="headline" style={styles.emptyTitle}>No logs yet</EbbText>
+            <EbbText type="body" style={styles.emptyText}>
               Start with today — it only takes 30 seconds
-            </Text>
+            </EbbText>
+            <CoralButton
+              label="Log Today"
+              onPress={() => router.push('/home/daily-log')}
+              style={styles.emptyBtn}
+            />
           </View>
         ) : (
           <FlatList
@@ -178,26 +184,32 @@ export default function HistoryScreen() {
               <Pressable onPress={() => setSelected(item)}>
                 <GlassCard variant="cream" style={styles.rowCard}>
                   <View style={styles.rowInner}>
-                    <View style={[styles.accentBar, { backgroundColor: getAccentColor(item) }]} />
+                    <View style={[styles.accentBar, { backgroundColor: getAccentColor(item) }]}>
+                      <EbbText type="caption" style={styles.accentBarLabel}>{avgSeverity(item).toFixed(1)}</EbbText>
+                    </View>
                     <View style={styles.rowContent}>
                       <View style={styles.rowTop}>
-                        <Text style={styles.rowDate}>
+                        <EbbText type="headline" style={styles.rowDate}>
                           {item.date === today ? 'Today' : formatFriendlyDate(item.date)}
-                        </Text>
-                        <Text style={styles.chevron}>{'\u203A'}</Text>
+                        </EbbText>
+                        <EbbText type="headline" style={styles.chevron}>{'\u203A'}</EbbText>
                       </View>
                       <View style={styles.dotsRow}>
-                        {item.entries.map((entry) => (
-                          <View
-                            key={entry.symptomId}
-                            style={[styles.dot, { backgroundColor: severityColors[entry.severity - 1] }]}
-                          />
-                        ))}
+                        {item.entries.map((entry) => {
+                          const symptom = settings?.symptoms.find((s) => s.id === entry.symptomId);
+                          const dotColor = symptom ? getSymptomColor(symptom.name) : severityColors[entry.severity - 1];
+                          return (
+                            <View
+                              key={entry.symptomId}
+                              style={[styles.dot, { backgroundColor: dotColor }]}
+                            />
+                          );
+                        })}
                       </View>
                       {item.note ? (
-                        <Text style={styles.notePreview} numberOfLines={1}>
+                        <EbbText type="footnote" style={styles.notePreview} numberOfLines={1}>
                           {item.note}
-                        </Text>
+                        </EbbText>
                       ) : null}
                     </View>
                   </View>
@@ -221,18 +233,19 @@ export default function HistoryScreen() {
                   <View style={styles.modalInner}>
                     <View style={styles.handleBar} />
                     <View style={styles.modalHeader}>
-                      <Text style={styles.modalTitle}>{formatFullDate(selected.date)}</Text>
+                      <EbbText type="headline" style={styles.modalTitle}>{formatFullDate(selected.date)}</EbbText>
                     </View>
                     <ScrollView showsVerticalScrollIndicator={false}>
                       {selected.entries.map((entry) => {
                         const symptom = settings.symptoms.find((s) => s.id === entry.symptomId);
                         const name = symptom?.name ?? 'Unknown symptom';
+                        const iconColor = symptom ? getSymptomColor(name) : colors.text;
                         return (
                           <View key={entry.symptomId} style={styles.modalRow}>
-                            <SymptomIcon name={name} size={14} color={colors.text} showBox />
-                            <Text style={[styles.modalSymptomName, !symptom && styles.modalSymptomMissing]}>
+                            <SymptomIcon name={name} size={22} color={iconColor} showBox boxSize={34} />
+                            <EbbText type="body" style={[styles.modalSymptomName, !symptom && styles.modalSymptomMissing]}>
                               {name}
-                            </Text>
+                            </EbbText>
                             <View style={styles.modalDotsRow}>
                               {([1, 2, 3, 4, 5] as SeverityLevel[]).map((level) => (
                                 <View
@@ -254,8 +267,8 @@ export default function HistoryScreen() {
                       })}
                       {selected.note ? (
                         <View style={styles.modalNote}>
-                          <Text style={styles.modalNoteLabel}>NOTE</Text>
-                          <Text style={styles.modalNoteText}>{selected.note}</Text>
+                          <EbbText type="caption" style={styles.modalNoteLabel}>NOTE</EbbText>
+                          <EbbText type="body" style={styles.modalNoteText}>{selected.note}</EbbText>
                         </View>
                       ) : null}
                     </ScrollView>
@@ -274,18 +287,14 @@ export default function HistoryScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   header: {
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: spacing.md,
     paddingTop: spacing.lg,
     paddingBottom: spacing.md,
   },
   title: {
-    fontFamily: 'DMSans_700Bold',
-    fontSize: fontSize.xxxl,
     color: colors.text,
   },
   subtitle: {
-    fontFamily: 'DMSans_400Regular',
-    fontSize: fontSize.md,
     color: colors.sage,
     marginTop: 2,
   },
@@ -306,14 +315,12 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   calDayLabel: {
-    fontFamily: 'DMSans_500Medium',
-    fontSize: fontSize.xs,
     color: colors.textMuted,
   },
   calCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -326,8 +333,7 @@ const styles = StyleSheet.create({
     borderColor: colors.primary,
   },
   calDayNum: {
-    fontFamily: 'DMSans_600SemiBold',
-    fontSize: fontSize.sm,
+    fontWeight: '600',
     color: colors.text,
   },
   calDayNumFilled: {
@@ -335,7 +341,7 @@ const styles = StyleSheet.create({
   },
   calDayNumToday: {
     color: colors.primary,
-    fontFamily: 'DMSans_700Bold',
+    fontWeight: '700',
   },
 
   // Empty state
@@ -354,16 +360,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   emptyTitle: {
-    fontFamily: 'DMSans_700Bold',
-    fontSize: fontSize.xl,
     color: colors.text,
     marginBottom: spacing.sm,
   },
   emptyText: {
-    fontFamily: 'DMSans_400Regular',
-    fontSize: fontSize.md,
     color: colors.textMuted,
     textAlign: 'center',
+  },
+  emptyBtn: {
+    marginTop: spacing.lg,
+    alignSelf: 'center',
+    paddingHorizontal: spacing.xl,
   },
 
   // List
@@ -376,7 +383,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     overflow: 'hidden',
   },
-  accentBar: { width: 4 },
+  accentBar: {
+    width: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 4,
+  },
+  accentBarLabel: {
+    fontWeight: '700',
+    color: '#FFFFFF',
+    textAlign: 'center',
+  },
   rowContent: { flex: 1, padding: spacing.md },
   rowTop: {
     flexDirection: 'row',
@@ -385,19 +402,14 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
   },
   rowDate: {
-    fontFamily: 'DMSans_600SemiBold',
-    fontSize: fontSize.md,
     color: colors.text,
   },
   chevron: {
-    fontSize: fontSize.xl,
     color: colors.textMuted,
   },
   dotsRow: { flexDirection: 'row', gap: 5, flexWrap: 'wrap' },
   dot: { width: 12, height: 12, borderRadius: 6 },
   notePreview: {
-    fontFamily: 'DMSans_400Regular',
-    fontSize: fontSize.sm,
     color: colors.textMuted,
     marginTop: spacing.xs,
     fontStyle: 'italic',
@@ -437,8 +449,6 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   modalTitle: {
-    fontFamily: 'DMSans_700Bold',
-    fontSize: fontSize.xl,
     color: colors.text,
   },
   modalRow: {
@@ -450,8 +460,6 @@ const styles = StyleSheet.create({
     borderBottomColor: 'rgba(0,0,0,0.06)',
   },
   modalSymptomName: {
-    fontFamily: 'DMSans_500Medium',
-    fontSize: fontSize.md,
     color: colors.text,
     flex: 1,
   },
@@ -468,15 +476,12 @@ const styles = StyleSheet.create({
     borderRadius: radius.sm,
   },
   modalNoteLabel: {
-    fontFamily: 'DMSans_600SemiBold',
-    fontSize: fontSize.xs,
+    fontWeight: '600',
     color: colors.textMuted,
     letterSpacing: 1.2,
     marginBottom: spacing.xs,
   },
   modalNoteText: {
-    fontFamily: 'DMSans_400Regular',
-    fontSize: fontSize.md,
     color: colors.text,
     lineHeight: 22,
   },

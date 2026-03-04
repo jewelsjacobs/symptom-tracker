@@ -1,0 +1,8 @@
+# Capture today's log screen
+appId: com.julia.ebb
+---
+- launchApp
+- waitForAnimationToEnd
+- tapOn: "Log Today"
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/todays-log
