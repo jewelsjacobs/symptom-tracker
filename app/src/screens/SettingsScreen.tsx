@@ -151,10 +151,21 @@ export default function SettingsScreen() {
 
   // -- Reminder --
 
-  async function onTimeChange(_event: DateTimePickerEvent, date?: Date) {
-    if (Platform.OS === 'android') setShowTimePicker(false);
-    if (!date || !settings) return;
+  function onTimeChange(_event: DateTimePickerEvent, date?: Date) {
+    if (Platform.OS === 'android') {
+      setShowTimePicker(false);
+      if (!date || !settings) return;
+      setPickerDate(date);
+      confirmReminderTime(date);
+      return;
+    }
+    // iOS spinner: just update local state, user will tap Done to confirm
+    if (!date) return;
     setPickerDate(date);
+  }
+
+  async function confirmReminderTime(date: Date) {
+    if (!settings) return;
     const h = String(date.getHours()).padStart(2, '0');
     const m = String(date.getMinutes()).padStart(2, '0');
     const timeStr = `${h}:${m}`;
@@ -352,13 +363,33 @@ export default function SettingsScreen() {
               </View>
 
               {showTimePicker && (
-                <DateTimePicker
-                  value={pickerDate}
-                  mode="time"
-                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                  onChange={onTimeChange}
-                  textColor={colors.text}
-                />
+                <>
+                  <DateTimePicker
+                    value={pickerDate}
+                    mode="time"
+                    display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                    onChange={onTimeChange}
+                    textColor={colors.text}
+                  />
+                  {Platform.OS === 'ios' && (
+                    <Pressable
+                      onPress={() => {
+                        setShowTimePicker(false);
+                        confirmReminderTime(pickerDate);
+                      }}
+                      style={styles.reminderDoneBtn}
+                    >
+                      <LinearGradient
+                        colors={['#E8725A', '#C2553F']}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={styles.reminderDoneBtnGradient}
+                      >
+                        <EbbText type="button" style={styles.reminderDoneBtnText}>Done</EbbText>
+                      </LinearGradient>
+                    </Pressable>
+                  )}
+                </>
               )}
             </View>
           </GlassCard>
@@ -484,12 +515,16 @@ export default function SettingsScreen() {
               <EbbText type="footnote" style={styles.aboutVersion}>v{pkg.version}</EbbText>
               <EbbText type="footnote" style={styles.aboutTagline}>Track in 30 seconds a day</EbbText>
               <View style={styles.aboutLinks}>
-                <Pressable onPress={() => Linking.openURL('https://example.com/privacy')}>
+                <Pressable onPress={() => Linking.openURL('https://ebb.bio/privacy.html')}>
                   <EbbText type="footnote" style={styles.aboutLink}>Privacy Policy</EbbText>
                 </Pressable>
                 <EbbText type="footnote" style={styles.aboutLinkSep}>{'\u00B7'}</EbbText>
-                <Pressable onPress={() => Linking.openURL('https://example.com/terms')}>
+                <Pressable onPress={() => Linking.openURL('https://ebb.bio/terms.html')}>
                   <EbbText type="footnote" style={styles.aboutLink}>Terms of Use</EbbText>
+                </Pressable>
+                <EbbText type="footnote" style={styles.aboutLinkSep}>{'\u00B7'}</EbbText>
+                <Pressable onPress={() => Linking.openURL('https://ebb.bio/support.html')}>
+                  <EbbText type="footnote" style={styles.aboutLink}>Support</EbbText>
                 </Pressable>
               </View>
             </View>
@@ -695,6 +730,22 @@ const styles = StyleSheet.create({
   reminderClearBtnText: {
     fontWeight: '500',
     color: colors.textMuted,
+  },
+  reminderDoneBtn: {
+    alignSelf: 'center',
+    marginTop: spacing.sm,
+    marginBottom: spacing.xs,
+  },
+  reminderDoneBtnGradient: {
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.lg + 4,
+    paddingVertical: spacing.sm + 2,
+    minHeight: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  reminderDoneBtnText: {
+    color: '#FFFFFF',
   },
 
   // Account
