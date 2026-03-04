@@ -293,6 +293,7 @@ export default function SettingsScreen() {
 
               <View style={styles.addRow}>
                 <TextInput
+                  allowFontScaling={false}
                   style={styles.addInput}
                   value={newSymptom}
                   onChangeText={setNewSymptom}
@@ -545,6 +546,7 @@ export default function SettingsScreen() {
                   </EbbText>
 
                   <TextInput
+                    allowFontScaling={false}
                     style={styles.authInput}
                     value={authEmail}
                     onChangeText={setAuthEmail}
@@ -555,6 +557,7 @@ export default function SettingsScreen() {
                     textContentType="emailAddress"
                   />
                   <TextInput
+                    allowFontScaling={false}
                     style={styles.authInput}
                     value={authPassword}
                     onChangeText={setAuthPassword}

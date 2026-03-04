@@ -15,7 +15,7 @@ export default function GradientBackground({ children }: Props) {
   return (
     <View style={styles.container}>
       <LinearGradient
-        colors={['#F5A962', '#E8725A', '#C2553F', '#7a3020']}
+        colors={['#F5A962', '#E8725A', '#C2553F']}
         start={{ x: 0.2, y: 0 }}
         end={{ x: 0.9, y: 1 }}
         style={StyleSheet.absoluteFill}

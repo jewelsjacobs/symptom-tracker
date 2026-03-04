@@ -156,6 +156,7 @@ export default function DailyLogScreen() {
           <View style={[styles.whiteCard, styles.symptomCard]}>
             <View style={styles.cardPad}>
               <TextInput
+                allowFontScaling={false}
                 style={styles.noteInput}
                 value={note}
                 onChangeText={(t) => setNote(t.slice(0, 500))}

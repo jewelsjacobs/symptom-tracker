@@ -1,11 +1,10 @@
 import React from 'react';
 import {
-  Text,
   TextProps,
   TextStyle,
-  useWindowDimensions,
   StyleSheet,
 } from 'react-native';
+import AppText from './AppText';
 
 export type EbbTextType =
   | 'largeTitle'
@@ -36,61 +35,59 @@ const EbbText: React.FC<EbbTextProps> = ({
   children,
   ...props
 }) => {
-  const { fontScale } = useWindowDimensions();
-
-  const typeStyle = getTypeStyle(type, fontScale);
+  const typeStyle = getTypeStyle(type);
 
   return (
-    <Text style={[typeStyle, style]} {...props}>
+    <AppText style={[typeStyle, style]} {...props}>
       {children}
-    </Text>
+    </AppText>
   );
 };
 
-function getTypeStyle(type: EbbTextType, fontScale: number): TextStyle {
+function getTypeStyle(type: EbbTextType): TextStyle {
   switch (type) {
     case 'largeTitle':
       return {
-        fontSize: 34 * fontScale,
+        fontSize: 34,
         fontFamily: 'System',
         fontWeight: '700',
         letterSpacing: 0.4,
       };
     case 'headline':
       return {
-        fontSize: 17 * fontScale,
+        fontSize: 17,
         fontFamily: 'System',
         fontWeight: '600',
         letterSpacing: -0.43,
       };
     case 'body':
       return {
-        fontSize: 17 * fontScale,
+        fontSize: 17,
         fontFamily: 'System',
         fontWeight: '400',
         letterSpacing: -0.43,
       };
     case 'subhead':
       return {
-        fontSize: 15 * fontScale,
+        fontSize: 15,
         fontFamily: 'System',
         fontWeight: '400',
       };
     case 'footnote':
       return {
-        fontSize: 13 * fontScale,
+        fontSize: 13,
         fontFamily: 'System',
         fontWeight: '400',
       };
     case 'caption':
       return {
-        fontSize: 11 * fontScale,
+        fontSize: 11,
         fontFamily: 'System',
         fontWeight: '500',
       };
     case 'button':
       return {
-        fontSize: 17 * fontScale,
+        fontSize: 17,
         fontFamily: 'System',
         fontWeight: '600',
         letterSpacing: -0.43,

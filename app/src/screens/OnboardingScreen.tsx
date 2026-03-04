@@ -210,6 +210,7 @@ export default function OnboardingScreen() {
         {/* Custom symptoms */}
         <View style={styles.customRow}>
           <TextInput
+            allowFontScaling={false}
             style={styles.input}
             value={customInput}
             onChangeText={setCustomInput}
