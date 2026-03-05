@@ -9,7 +9,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from 'expo-router';
 import { useRouter } from 'expo-router';
 
-import { colors, spacing, radius, getSymptomColor } from '../theme';
+import { colors, spacing, radius, getSymptomColor, severity as severityColors } from '../theme';
 import { loadSettings, loadLog, loadAllLogs, getTodayDateString } from '../storage';
 import { AppSettings, DailyLog, SeverityLevel } from '../types';
 import GradientBackground from '../components/GradientBackground';
@@ -164,7 +164,7 @@ export default function HomeScreen() {
                                       styles.barFill,
                                       {
                                         height: `${(sev / 5) * 100}%`,
-                                        backgroundColor: symptomColor,
+                                        backgroundColor: severityColors[sev - 1],
                                       },
                                     ]}
                                   />
@@ -208,7 +208,7 @@ export default function HomeScreen() {
                               styles.barFillHoriz,
                               {
                                 width: `${(sev / 5) * 100}%`,
-                                backgroundColor: symptomColor,
+                                backgroundColor: severityColors[sev - 1],
                               },
                             ]}
                           />
@@ -317,6 +317,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'flex-end',
     height: 48,
+    paddingLeft: 42, // indent past the symptom icon (34px box + 8px gap)
   },
   trendCell: {
     flex: 1,

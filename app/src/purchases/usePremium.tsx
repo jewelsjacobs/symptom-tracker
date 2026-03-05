@@ -14,13 +14,16 @@ const PremiumContext = createContext<PremiumContextType>({
   refresh: async () => {},
 });
 
+// Set to true temporarily for screenshots, then back to false before submitting
+const FORCE_PREMIUM = false;
+
 /**
  * Provider that holds global premium state.
  * Wrap your app root with this so all screens share the same state.
  */
 export function PremiumProvider({ children }: { children: React.ReactNode }) {
-  const [premium, setPremium] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [premium, setPremium] = useState(FORCE_PREMIUM);
+  const [loading, setLoading] = useState(false);
 
   const refresh = useCallback(async () => {
     setLoading(true);

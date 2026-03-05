@@ -197,7 +197,7 @@ export default function HistoryScreen() {
                       <View style={styles.dotsRow}>
                         {item.entries.map((entry) => {
                           const symptom = settings?.symptoms.find((s) => s.id === entry.symptomId);
-                          const dotColor = symptom ? getSymptomColor(symptom.name) : severityColors[entry.severity - 1];
+                          const dotColor = severityColors[entry.severity - 1];
                           return (
                             <View
                               key={entry.symptomId}

@@ -99,6 +99,9 @@ export const symptomColors: Record<string, string> = {
   'sleep quality': '#6C63FF',  // indigo — proper crescent moon icon
   'mood':          '#2EAD6B',  // green — signal bars icon
   'depression':    '#7B4EA3',  // purple — bar chart icon
+  'appetite':      '#43A692',  // sage green — appetite/eating icon
+  'heart rate':    '#D4483B',  // red — heart icon
+  'energy':        '#E9A830',  // amber — energy icon
 };
 
 /**

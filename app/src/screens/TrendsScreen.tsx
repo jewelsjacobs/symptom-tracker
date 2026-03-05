@@ -283,9 +283,14 @@ export default function TrendsScreen() {
               });
 
               const filled = dataPoints.map((p) => p.severity);
-              const avg = filled.length > 0
-                ? (filled.reduce((s, v) => s + v, 0) / filled.length).toFixed(1)
-                : '\u2014';
+              const avgNum = filled.length > 0
+                ? filled.reduce((s, v) => s + v, 0) / filled.length
+                : 0;
+              const avg = avgNum > 0 ? avgNum.toFixed(1) : '\u2014';
+              // Severity color based on rounded average
+              const avgSevColor = avgNum > 0
+                ? severityColors[Math.max(0, Math.min(4, Math.round(avgNum) - 1))]
+                : colors.textMuted;
 
               // Map to SVG coordinates
               const svgPoints = dataPoints.map((p) => ({
@@ -297,8 +302,10 @@ export default function TrendsScreen() {
 
               const { linePath, areaPath } = buildAreaPath(svgPoints, CHART_W, CHART_H - CHART_PAD);
 
-              // Use symptom's unique color for the chart
-              const chartColor = getSymptomColor(symptom.name);
+              // Symptom's unique color for name/icon
+              const symptomColor = getSymptomColor(symptom.name);
+              // Avg severity color for chart line and gradient
+              const chartColor = avgSevColor;
 
               // X-axis labels based on selected range
               const xLabels = getXAxisLabels(dates, range);
@@ -307,10 +314,10 @@ export default function TrendsScreen() {
                 <GlassCard key={symptom.id} variant="cream" style={styles.card}>
                   <View style={styles.cardPad}>
                     <View style={styles.cardHeader}>
-                      <SymptomIcon name={symptom.name} size={18} color={chartColor} showBox boxSize={32} />
-                      <EbbText type="headline" style={[styles.symptomName, { color: chartColor }]}>{symptom.name}</EbbText>
-                      <View style={styles.avgBadge}>
-                        <EbbText type="caption" style={styles.avgText}>avg {avg}</EbbText>
+                      <SymptomIcon name={symptom.name} size={18} color={symptomColor} showBox boxSize={32} />
+                      <EbbText type="headline" style={styles.symptomName}>{symptom.name}</EbbText>
+                      <View style={[styles.avgBadge, { backgroundColor: avgSevColor + '20' }]}>
+                        <EbbText type="caption" style={[styles.avgText, { color: avgSevColor }]}>avg {avg}</EbbText>
                       </View>
                     </View>
 
@@ -350,18 +357,22 @@ export default function TrendsScreen() {
                               strokeLinecap="round"
                               strokeLinejoin="round"
                             />
-                            {/* Data point dots with severity labels */}
-                            {svgPoints.map((pt, idx) => (
-                              <Circle
-                                key={idx}
-                                cx={pt.x}
-                                cy={pt.y}
-                                r={idx === svgPoints.length - 1 ? 4 : 2.5}
-                                fill={idx === svgPoints.length - 1 ? '#FFFFFF' : chartColor}
-                                stroke={chartColor}
-                                strokeWidth={idx === svgPoints.length - 1 ? 2 : 0}
-                              />
-                            ))}
+                            {/* Data point dots colored by severity */}
+                            {svgPoints.map((pt, idx) => {
+                              const sevColor = severityColors[dataPoints[idx].severity - 1];
+                              const isLast = idx === svgPoints.length - 1;
+                              return (
+                                <Circle
+                                  key={idx}
+                                  cx={pt.x}
+                                  cy={pt.y}
+                                  r={isLast ? 4 : 2.5}
+                                  fill={isLast ? '#FFFFFF' : sevColor}
+                                  stroke={sevColor}
+                                  strokeWidth={isLast ? 2 : 0}
+                                />
+                              );
+                            })}
                           </>
                         ) : null}
                       </Svg>
