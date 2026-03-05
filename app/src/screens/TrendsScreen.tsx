@@ -112,6 +112,104 @@ function rangeToDays(range: Range): number {
   }
 }
 
+type AggregatedPoint = { index: number; severity: number; label: string };
+
+/**
+ * Aggregate daily data points into weekly or monthly buckets.
+ * Returns averaged severity per bucket with a label for x-axis.
+ */
+function aggregateDataPoints(
+  dates: string[],
+  getSev: (date: string) => SeverityLevel | null,
+  mode: 'weekly' | 'monthly',
+  multiYear: boolean,
+): AggregatedPoint[] {
+  if (dates.length === 0) return [];
+
+  const buckets: Map<string, { severities: number[]; index: number }> = new Map();
+  const bucketOrder: string[] = [];
+
+  dates.forEach((dateStr, i) => {
+    const sev = getSev(dateStr);
+    if (sev === null) return;
+    const d = parseDate(dateStr);
+    let key: string;
+    let label: string;
+
+    if (mode === 'weekly') {
+      // Group by ISO week: find the Monday of this week
+      const day = d.getDay();
+      const monday = new Date(d);
+      monday.setDate(d.getDate() - ((day + 6) % 7));
+      key = `${monday.getFullYear()}-${String(monday.getMonth() + 1).padStart(2, '0')}-${String(monday.getDate()).padStart(2, '0')}`;
+      label = `${MONTH_NAMES[monday.getMonth()]} ${monday.getDate()}`;
+    } else {
+      // Group by month
+      key = `${d.getFullYear()}-${d.getMonth()}`;
+      const name = MONTH_NAMES[d.getMonth()];
+      label = multiYear ? `${name} '${String(d.getFullYear()).slice(2)}` : name;
+    }
+
+    if (!buckets.has(key)) {
+      buckets.set(key, { severities: [], index: bucketOrder.length });
+      bucketOrder.push(key);
+    }
+    buckets.get(key)!.severities.push(sev);
+  });
+
+  return bucketOrder.map((key, i) => {
+    const bucket = buckets.get(key)!;
+    const avg = bucket.severities.reduce((s, v) => s + v, 0) / bucket.severities.length;
+    return { index: i, severity: Math.round(avg * 10) / 10, label: '' };
+  });
+}
+
+/** Get labels from aggregated points */
+function getAggregatedLabels(
+  dates: string[],
+  getSev: (date: string) => SeverityLevel | null,
+  mode: 'weekly' | 'monthly',
+  multiYear: boolean,
+): string[] {
+  if (dates.length === 0) return [];
+
+  const seen = new Set<string>();
+  const labels: string[] = [];
+
+  dates.forEach((dateStr) => {
+    const sev = getSev(dateStr);
+    if (sev === null) return;
+    const d = parseDate(dateStr);
+    let key: string;
+    let label: string;
+
+    if (mode === 'weekly') {
+      const day = d.getDay();
+      const monday = new Date(d);
+      monday.setDate(d.getDate() - ((day + 6) % 7));
+      key = `${monday.getFullYear()}-${String(monday.getMonth() + 1).padStart(2, '0')}-${String(monday.getDate()).padStart(2, '0')}`;
+      label = `${MONTH_NAMES[monday.getMonth()]} ${monday.getDate()}`;
+    } else {
+      key = `${d.getFullYear()}-${d.getMonth()}`;
+      const name = MONTH_NAMES[d.getMonth()];
+      label = multiYear ? `${name} '${String(d.getFullYear()).slice(2)}` : name;
+    }
+
+    if (!seen.has(key)) {
+      seen.add(key);
+      labels.push(label);
+    }
+  });
+
+  // If too many labels, sample evenly
+  if (labels.length <= 6) return labels;
+  const max = 6;
+  return Array.from({ length: max }, (_, i) => {
+    const idx = Math.round((i / (max - 1)) * (labels.length - 1));
+    return labels[idx];
+  });
+}
+
 const CHART_H = 60;
 const CHART_PAD = 8; // horizontal inset so edge dots aren't clipped
 
@@ -275,40 +373,58 @@ export default function TrendsScreen() {
         ) : (
           <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
             {settings.symptoms.map((symptom) => {
-              // Collect data points (only dates with data)
-              const dataPoints: { index: number; severity: number }[] = [];
-              dates.forEach((date, i) => {
-                const sev = getSeverity(symptom.id, date);
-                if (sev !== null) dataPoints.push({ index: i, severity: sev });
-              });
+              const getSev = (date: string) => getSeverity(symptom.id, date);
+
+              // Check if dates span multiple years (for label formatting)
+              const firstDate = dates.length > 0 ? parseDate(dates[0]) : new Date();
+              const lastDate = dates.length > 0 ? parseDate(dates[dates.length - 1]) : new Date();
+              const multiYear = firstDate.getFullYear() !== lastDate.getFullYear();
+
+              // For 90D and All, aggregate into weekly/monthly averages
+              // For 7D and 30D, use daily data points
+              const useAggregation = range === '90D' || range === 'All';
+              const aggMode = range === 'All' ? 'monthly' : 'weekly';
+
+              let dataPoints: { index: number; severity: number }[];
+              let xLabels: string[];
+              let totalPoints: number;
+
+              if (useAggregation) {
+                const aggPoints = aggregateDataPoints(dates, getSev, aggMode, multiYear);
+                dataPoints = aggPoints.map((p, i) => ({ index: i, severity: p.severity }));
+                xLabels = getAggregatedLabels(dates, getSev, aggMode, multiYear);
+                totalPoints = aggPoints.length;
+              } else {
+                dataPoints = [];
+                dates.forEach((date, i) => {
+                  const sev = getSev(date);
+                  if (sev !== null) dataPoints.push({ index: i, severity: sev });
+                });
+                xLabels = getXAxisLabels(dates, range);
+                totalPoints = dates.length;
+              }
 
               const filled = dataPoints.map((p) => p.severity);
               const avgNum = filled.length > 0
                 ? filled.reduce((s, v) => s + v, 0) / filled.length
                 : 0;
               const avg = avgNum > 0 ? avgNum.toFixed(1) : '\u2014';
-              // Severity color based on rounded average
               const avgSevColor = avgNum > 0
                 ? severityColors[Math.max(0, Math.min(4, Math.round(avgNum) - 1))]
                 : colors.textMuted;
 
               // Map to SVG coordinates
               const svgPoints = dataPoints.map((p) => ({
-                x: dates.length > 1
-                  ? CHART_PAD + (p.index / (dates.length - 1)) * (CHART_W - CHART_PAD * 2)
+                x: totalPoints > 1
+                  ? CHART_PAD + (p.index / (totalPoints - 1)) * (CHART_W - CHART_PAD * 2)
                   : CHART_PAD,
                 y: CHART_PAD + (1 - (p.severity - 1) / 4) * (CHART_H - CHART_PAD * 2),
               }));
 
               const { linePath, areaPath } = buildAreaPath(svgPoints, CHART_W, CHART_H - CHART_PAD);
 
-              // Symptom's unique color for name/icon
               const symptomColor = getSymptomColor(symptom.name);
-              // Avg severity color for chart line and gradient
               const chartColor = avgSevColor;
-
-              // X-axis labels based on selected range
-              const xLabels = getXAxisLabels(dates, range);
 
               return (
                 <GlassCard key={symptom.id} variant="cream" style={styles.card}>
