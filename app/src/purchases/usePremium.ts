@@ -1,18 +1,31 @@
-import { useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
 import { isPremium } from './index';
 
+type PremiumContextType = {
+  premium: boolean;
+  loading: boolean;
+  refresh: () => Promise<void>;
+};
+
+const PremiumContext = createContext<PremiumContextType>({
+  premium: false,
+  loading: true,
+  refresh: async () => {},
+});
+
 /**
- * React hook: returns { premium, loading, refresh }
- * Re-checks whenever app comes to foreground (handles subscription changes).
+ * Provider that holds global premium state.
+ * Wrap your app root with this so all screens share the same state.
  */
-export function usePremium() {
+export function PremiumProvider({ children }: { children: React.ReactNode }) {
   const [premium, setPremium] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(async () => {
     setLoading(true);
-    setPremium(await isPremium());
+    const result = await isPremium();
+    setPremium(result);
     setLoading(false);
   }, []);
 
@@ -26,5 +39,17 @@ export function usePremium() {
     return () => sub.remove();
   }, [refresh]);
 
-  return { premium, loading, refresh };
+  return (
+    <PremiumContext.Provider value={{ premium, loading, refresh }}>
+      {children}
+    </PremiumContext.Provider>
+  );
+}
+
+/**
+ * React hook: returns { premium, loading, refresh }
+ * Now reads from shared context so all screens update together.
+ */
+export function usePremium() {
+  return useContext(PremiumContext);
 }

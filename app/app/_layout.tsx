@@ -10,6 +10,7 @@ import { colors } from '../src/theme';
 import { loadSettings } from '../src/storage';
 import { AppContext } from '../src/context/AppContext';
 import { configurePurchases } from '../src/purchases';
+import { PremiumProvider } from '../src/purchases/usePremium';
 
 // Keep splash visible until settings load
 SplashScreen.preventAutoHideAsync();
@@ -59,14 +60,16 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <AppContext.Provider value={{ completeOnboarding }}>
-          <Stack screenOptions={{ headerShown: false, animation: 'none' }}>
-            <Stack.Screen name="index" redirect />
-            <Stack.Screen name="(tabs)" />
-            <Stack.Screen name="onboarding" />
-            <Stack.Screen name="paywall" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
-          </Stack>
-          {isReady && !hasOnboarded && <Redirect href="/onboarding" />}
-          <StatusBar style="auto" />
+          <PremiumProvider>
+            <Stack screenOptions={{ headerShown: false, animation: 'none' }}>
+              <Stack.Screen name="index" redirect />
+              <Stack.Screen name="(tabs)" />
+              <Stack.Screen name="onboarding" />
+              <Stack.Screen name="paywall" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
+            </Stack>
+            {isReady && !hasOnboarded && <Redirect href="/onboarding" />}
+            <StatusBar style="auto" />
+          </PremiumProvider>
         </AppContext.Provider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
