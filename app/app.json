@@ -15,6 +15,7 @@
     },
     "ios": {
       "bundleIdentifier": "com.julia.ebb",
+      "buildNumber": "2",
       "supportsTablet": false,
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
