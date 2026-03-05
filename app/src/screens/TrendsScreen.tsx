@@ -291,7 +291,7 @@ export default function TrendsScreen() {
               const svgPoints = dataPoints.map((p) => ({
                 x: dates.length > 1
                   ? CHART_PAD + (p.index / (dates.length - 1)) * (CHART_W - CHART_PAD * 2)
-                  : CHART_W / 2,
+                  : CHART_PAD,
                 y: CHART_PAD + (1 - (p.severity - 1) / 4) * (CHART_H - CHART_PAD * 2),
               }));
 
