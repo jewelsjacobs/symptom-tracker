@@ -52,6 +52,11 @@ function parseDate(dateStr: string): Date {
  */
 function getXAxisLabels(dates: string[], range: Range): string[] {
   if (dates.length === 0) return [];
+  if (dates.length === 1) {
+    // Single date — just show it
+    const d = parseDate(dates[0]);
+    return [range === '7D' ? DAY_NAMES[d.getDay()] : `${MONTH_NAMES[d.getMonth()]} ${d.getDate()}`];
+  }
 
   switch (range) {
     case '7D': {
