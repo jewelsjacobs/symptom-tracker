@@ -112,11 +112,11 @@ function rangeToDays(range: Range): number {
   }
 }
 
-type AggregatedPoint = { index: number; severity: number; label: string };
+type AggregatedPoint = { index: number; severity: number; min: number; max: number; label: string; firstDate: string; lastDate: string };
 
 /**
  * Aggregate daily data points into weekly or monthly buckets.
- * Returns averaged severity per bucket with a label for x-axis.
+ * Returns avg, min, max severity per bucket for range band visualization.
  */
 function aggregateDataPoints(
   dates: string[],
@@ -126,7 +126,7 @@ function aggregateDataPoints(
 ): AggregatedPoint[] {
   if (dates.length === 0) return [];
 
-  const buckets: Map<string, { severities: number[]; index: number }> = new Map();
+  const buckets: Map<string, { severities: number[]; index: number; firstDate: string; lastDate: string }> = new Map();
   const bucketOrder: string[] = [];
 
   dates.forEach((dateStr, i) => {
@@ -137,30 +137,38 @@ function aggregateDataPoints(
     let label: string;
 
     if (mode === 'weekly') {
-      // Group by ISO week: find the Monday of this week
       const day = d.getDay();
       const monday = new Date(d);
       monday.setDate(d.getDate() - ((day + 6) % 7));
       key = `${monday.getFullYear()}-${String(monday.getMonth() + 1).padStart(2, '0')}-${String(monday.getDate()).padStart(2, '0')}`;
       label = `${MONTH_NAMES[monday.getMonth()]} ${monday.getDate()}`;
     } else {
-      // Group by month
       key = `${d.getFullYear()}-${d.getMonth()}`;
       const name = MONTH_NAMES[d.getMonth()];
       label = multiYear ? `${name} '${String(d.getFullYear()).slice(2)}` : name;
     }
 
     if (!buckets.has(key)) {
-      buckets.set(key, { severities: [], index: bucketOrder.length });
+      buckets.set(key, { severities: [], index: bucketOrder.length, firstDate: dateStr, lastDate: dateStr });
       bucketOrder.push(key);
     }
-    buckets.get(key)!.severities.push(sev);
+    const bucket = buckets.get(key)!;
+    bucket.severities.push(sev);
+    bucket.lastDate = dateStr;
   });
 
   return bucketOrder.map((key, i) => {
     const bucket = buckets.get(key)!;
     const avg = bucket.severities.reduce((s, v) => s + v, 0) / bucket.severities.length;
-    return { index: i, severity: Math.round(avg * 10) / 10, label: '' };
+    return {
+      index: i,
+      severity: Math.round(avg * 10) / 10,
+      min: Math.min(...bucket.severities),
+      max: Math.max(...bucket.severities),
+      label: '',
+      firstDate: bucket.firstDate,
+      lastDate: bucket.lastDate,
+    };
   });
 }
 
@@ -248,6 +256,8 @@ export default function TrendsScreen() {
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [logMap, setLogMap] = useState<Map<string, DailyLog>>(new Map());
   const [range, setRange] = useState<Range>('7D');
+  // Tooltip state for month view: "symptomId-dataIndex" or null
+  const [selectedDot, setSelectedDot] = useState<string | null>(null);
   const { premium } = usePremium();
   const router = useRouter();
   const { width: screenWidth } = useWindowDimensions();
@@ -256,6 +266,7 @@ export default function TrendsScreen() {
 
   useFocusEffect(
     useCallback(() => {
+      setSelectedDot(null); // Clear tooltip on focus
       (async () => {
         const [s, logs] = await Promise.all([loadSettings(), loadAllLogs()]);
         setSettings(s);
@@ -268,8 +279,17 @@ export default function TrendsScreen() {
 
   if (!settings) return null;
 
-  // Generate dates only for the range that has data, not empty space
-  const maxDays = rangeToDays(range);
+  // Generate dates for the selected range
+  let maxDays = rangeToDays(range);
+
+  // For 3 Months, calculate exact days to cover current month + 2 prior months
+  if (range === '90D') {
+    const now = new Date();
+    const threeMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 2, 1); // 1st of 2 months ago
+    const diffMs = now.getTime() - threeMonthsAgo.getTime();
+    maxDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+  }
+
   const allDatesInRange = Array.from({ length: Math.min(maxDays, 365) }, (_, i) => daysAgoDateString(Math.min(maxDays, 365) - 1 - i));
 
   // Find the earliest date that has a log within this range
@@ -309,7 +329,7 @@ export default function TrendsScreen() {
                 <Pressable
                   key={r}
                   style={styles.togglePill}
-                  onPress={() => setRange(r)}
+                  onPress={() => { setRange(r); setSelectedDot(null); }}
                 >
                   {isActive ? (
                     <LinearGradient
@@ -371,7 +391,7 @@ export default function TrendsScreen() {
             <EbbText type="body" style={styles.emptyText}>Add symptoms in Settings to see trends.</EbbText>
           </View>
         ) : (
-          <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+          <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} onScrollBeginDrag={() => setSelectedDot(null)}>
             {settings.symptoms.map((symptom) => {
               const getSev = (date: string) => getSeverity(symptom.id, date);
 
@@ -389,11 +409,13 @@ export default function TrendsScreen() {
               let xLabels: string[];
               let totalPoints: number;
 
+              let aggData: AggregatedPoint[] = [];
               if (useAggregation) {
-                const aggPoints = aggregateDataPoints(dates, getSev, aggMode, multiYear);
-                dataPoints = aggPoints.map((p, i) => ({ index: i, severity: p.severity }));
-                xLabels = getAggregatedLabels(dates, getSev, aggMode, multiYear);
-                totalPoints = aggPoints.length;
+                aggData = aggregateDataPoints(dates, getSev, aggMode, multiYear);
+                dataPoints = aggData.map((p, i) => ({ index: i, severity: p.severity }));
+                // Both 90D and All use month-only labels (no week dates)
+                xLabels = getAggregatedLabels(dates, getSev, 'monthly', multiYear);
+                totalPoints = aggData.length;
               } else {
                 dataPoints = [];
                 dates.forEach((date, i) => {
@@ -424,10 +446,13 @@ export default function TrendsScreen() {
               const { linePath, areaPath } = buildAreaPath(svgPoints, CHART_W, CHART_H - CHART_PAD);
 
               const symptomColor = getSymptomColor(symptom.name);
-              const chartColor = avgSevColor;
+              // Neutral warm color for line and gradient — lets the colored dots tell the story
+              const chartLineColor = '#B5ADA8';
+              const chartFillColor = '#D5CFCA';
 
               return (
-                <GlassCard key={symptom.id} variant="cream" style={styles.card}>
+                <Pressable key={symptom.id} onPress={() => setSelectedDot(null)}>
+                <GlassCard variant="cream" style={styles.card}>
                   <View style={styles.cardPad}>
                     <View style={styles.cardHeader}>
                       <SymptomIcon name={symptom.name} size={18} color={symptomColor} showBox boxSize={32} />
@@ -438,14 +463,74 @@ export default function TrendsScreen() {
                     </View>
 
                     {/* Area chart */}
-                    <View style={styles.chartContainer}>
+                    <Pressable style={styles.chartContainer} onPress={() => setSelectedDot(null)}>
+                      {/* Tooltip for selected dot (30D, 90D, All views) */}
+                      {range !== '7D' && selectedDot?.startsWith(symptom.id + '-') && (() => {
+                        const dotIdx = parseInt(selectedDot.split('-').pop()!, 10);
+                        const dp = dataPoints[dotIdx];
+                        const pt = svgPoints[dotIdx];
+                        if (!dp || !pt) return null;
+                        const sevRounded = Math.max(1, Math.min(5, Math.round(dp.severity)));
+                        const sevColor = severityColors[sevRounded - 1];
+                        let label: string;
+                        if (useAggregation && aggData[dotIdx]) {
+                          // Show date range for the bucket (e.g. "Feb 3 - Feb 9")
+                          const ad = aggData[dotIdx];
+                          const fd = parseDate(ad.firstDate);
+                          const ld = parseDate(ad.lastDate);
+                          const fStr = `${MONTH_NAMES[fd.getMonth()]} ${fd.getDate()}`;
+                          const lStr = `${MONTH_NAMES[ld.getMonth()]} ${ld.getDate()}`;
+                          label = fStr === lStr ? fStr : `${fStr} - ${lStr}`;
+                        } else {
+                          // For 30D, show the actual date
+                          const matchingDates = dates.filter((d) => getSev(d) !== null);
+                          const dateStr = matchingDates[dotIdx];
+                          if (!dateStr) return null;
+                          const d = parseDate(dateStr);
+                          label = `${MONTH_NAMES[d.getMonth()]} ${d.getDate()}`;
+                        }
+                        const tooltipX = Math.max(30, Math.min(CHART_W - 30, pt.x));
+                        return (
+                          <View style={[styles.tooltip, { left: tooltipX - 30, top: Math.max(0, pt.y - 36) }]}>
+                            <EbbText type="caption" style={styles.tooltipDate}>{label}</EbbText>
+                            <EbbText type="headline" style={[styles.tooltipValue, { color: sevColor }]}>{sevRounded}</EbbText>
+                          </View>
+                        );
+                      })()}
                       <Svg width={CHART_W} height={CHART_H} viewBox={`0 0 ${CHART_W} ${CHART_H}`}>
                         <Defs>
                           <SvgGradient id={`grad-${symptom.id}`} x1="0" y1="0" x2="0" y2="1">
-                            <Stop offset="0%" stopColor={chartColor} stopOpacity={0.35} />
-                            <Stop offset="100%" stopColor={chartColor} stopOpacity={0.05} />
+                            <Stop offset="0%" stopColor={chartFillColor} stopOpacity={0.3} />
+                            <Stop offset="100%" stopColor={chartFillColor} stopOpacity={0.05} />
+                          </SvgGradient>
+                          {/* OPTION A: Horizontal severity zone bands (vertical gradient) */}
+                          {/* Uncomment to use zone-based fill instead of timeline fill */}
+                          {/*
+                          <SvgGradient id={`zones-${symptom.id}`} x1="0" y1="1" x2="0" y2="0">
+                            <Stop offset="0%" stopColor={severityColors[0]} stopOpacity={0.15} />
+                            <Stop offset="25%" stopColor={severityColors[1]} stopOpacity={0.15} />
+                            <Stop offset="50%" stopColor={severityColors[2]} stopOpacity={0.15} />
+                            <Stop offset="75%" stopColor={severityColors[3]} stopOpacity={0.15} />
+                            <Stop offset="100%" stopColor={severityColors[4]} stopOpacity={0.15} />
+                          </SvgGradient>
+                          */}
+                          {/* OPTION B: Timeline gradient — each stop matches its data point's severity color */}
+                          <SvgGradient id={`zones-${symptom.id}`} x1="0" y1="0" x2="1" y2="0">
+                            {dataPoints.map((dp, idx) => {
+                              const sevRounded = Math.max(1, Math.min(5, Math.round(dp.severity)));
+                              const pct = totalPoints > 1 ? (dp.index / (totalPoints - 1)) * 100 : 0;
+                              return (
+                                <Stop
+                                  key={idx}
+                                  offset={`${pct}%`}
+                                  stopColor={severityColors[sevRounded - 1]}
+                                  stopOpacity={0.25}
+                                />
+                              );
+                            })}
                           </SvgGradient>
                         </Defs>
+
                         {/* Gridlines at severity 1, 3, 5 */}
                         {[1, 3, 5].map((sev) => {
                           const y = CHART_PAD + (1 - (sev - 1) / 4) * (CHART_H - CHART_PAD * 2);
@@ -464,35 +549,81 @@ export default function TrendsScreen() {
                         })}
                         {areaPath ? (
                           <>
-                            <Path d={areaPath} fill={`url(#grad-${symptom.id})`} />
+                            <Path d={areaPath} fill={`url(#zones-${symptom.id})`} />
+                            {/* Range band for aggregated views (min-max spread) */}
+                            {useAggregation && aggData.length > 1 && (() => {
+                              const maxPoints = aggData.map((p) => ({
+                                x: totalPoints > 1
+                                  ? CHART_PAD + (p.index / (totalPoints - 1)) * (CHART_W - CHART_PAD * 2)
+                                  : CHART_PAD,
+                                y: CHART_PAD + (1 - (p.max - 1) / 4) * (CHART_H - CHART_PAD * 2),
+                              }));
+                              const minPoints = aggData.map((p) => ({
+                                x: totalPoints > 1
+                                  ? CHART_PAD + (p.index / (totalPoints - 1)) * (CHART_W - CHART_PAD * 2)
+                                  : CHART_PAD,
+                                y: CHART_PAD + (1 - (p.min - 1) / 4) * (CHART_H - CHART_PAD * 2),
+                              }));
+                              // Build band path: go along max left-to-right, then min right-to-left
+                              let bandPath = `M${maxPoints[0].x} ${maxPoints[0].y}`;
+                              for (let bi = 1; bi < maxPoints.length; bi++) {
+                                bandPath += ` L${maxPoints[bi].x} ${maxPoints[bi].y}`;
+                              }
+                              for (let bi = minPoints.length - 1; bi >= 0; bi--) {
+                                bandPath += ` L${minPoints[bi].x} ${minPoints[bi].y}`;
+                              }
+                              bandPath += ' Z';
+                              return (
+                                <Path
+                                  d={bandPath}
+                                  fill="rgba(0,0,0,0.06)"
+                                  stroke="none"
+                                />
+                              );
+                            })()}
                             <Path
                               d={linePath}
-                              stroke={chartColor}
-                              strokeWidth={2}
+                              stroke={chartLineColor}
+                              strokeWidth={1.5}
                               fill="none"
                               strokeLinecap="round"
                               strokeLinejoin="round"
                             />
-                            {/* Data point dots colored by severity */}
+                            {/* Data point dots — larger, colored by severity to show trends */}
+                            {/* For Month view, only show dot when severity changes from previous */}
                             {svgPoints.map((pt, idx) => {
-                              const sevColor = severityColors[dataPoints[idx].severity - 1];
+                              const sevRounded = Math.max(1, Math.min(5, Math.round(dataPoints[idx].severity)));
+                              const sevColor = severityColors[sevRounded - 1];
                               const isLast = idx === svgPoints.length - 1;
+                              const isFirst = idx === 0;
+                              const isSelected = selectedDot === `${symptom.id}-${idx}`;
+
+                              // For 30D, skip dot if same severity as previous point
+                              if (range === '30D' && !isFirst && !isLast && !isSelected) {
+                                const prevSev = Math.max(1, Math.min(5, Math.round(dataPoints[idx - 1].severity)));
+                                if (sevRounded === prevSev) return null;
+                              }
+
                               return (
                                 <Circle
                                   key={idx}
                                   cx={pt.x}
                                   cy={pt.y}
-                                  r={isLast ? 4 : 2.5}
-                                  fill={isLast ? '#FFFFFF' : sevColor}
-                                  stroke={sevColor}
-                                  strokeWidth={isLast ? 2 : 0}
+                                  r={isSelected ? 6 : isLast ? 5 : 4}
+                                  fill={sevColor}
+                                  stroke={isLast || isSelected ? '#FFFFFF' : 'none'}
+                                  strokeWidth={isLast || isSelected ? 2 : 0}
+                                  onPress={range !== '7D' ? () => {
+                                    const key = `${symptom.id}-${idx}`;
+                                    setSelectedDot(selectedDot === key ? null : key);
+                                  } : undefined}
                                 />
                               );
                             })}
                           </>
                         ) : null}
                       </Svg>
-                    </View>
+                    </Pressable>
 
                     {/* X-axis labels */}
                     <View style={styles.xLabels}>
@@ -515,8 +646,17 @@ export default function TrendsScreen() {
                         </View>
                       ))}
                     </View>
+                    {useAggregation && (
+                      <View style={styles.bandLegend}>
+                        <View style={styles.bandLegendSwatch} />
+                        <EbbText type="caption" style={styles.bandLegendText}>
+                          Band = daily range · Dot = {aggMode === 'weekly' ? 'weekly' : 'monthly'} avg
+                        </EbbText>
+                      </View>
+                    )}
                   </View>
                 </GlassCard>
+                </Pressable>
               );
             })}
             <View style={{ height: 100 }} />
@@ -613,6 +753,29 @@ const styles = StyleSheet.create({
   // Chart
   chartContainer: {
     marginBottom: spacing.xs,
+    position: 'relative',
+  },
+  tooltip: {
+    position: 'absolute',
+    zIndex: 10,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    shadowColor: 'rgba(0,0,0,0.15)',
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
+    shadowOpacity: 1,
+    elevation: 4,
+    alignItems: 'center',
+  },
+  tooltipDate: {
+    fontSize: 9,
+    color: '#7A706B',
+  },
+  tooltipValue: {
+    fontWeight: '700',
+    fontSize: 16,
   },
   xLabels: {
     flexDirection: 'row',
@@ -643,6 +806,24 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
   },
   legendDot: { width: 8, height: 8, borderRadius: 4 },
+  bandLegend: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: spacing.xs,
+  },
+  bandLegendSwatch: {
+    width: 16,
+    height: 8,
+    borderRadius: 2,
+    backgroundColor: 'rgba(0,0,0,0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.08)',
+  },
+  bandLegendText: {
+    color: colors.textMuted,
+    fontSize: 10,
+  },
 
   // Empty
   empty: {

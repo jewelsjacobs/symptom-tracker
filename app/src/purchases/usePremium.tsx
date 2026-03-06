@@ -26,6 +26,7 @@ export function PremiumProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(false);
 
   const refresh = useCallback(async () => {
+    if (FORCE_PREMIUM) return;
     setLoading(true);
     const result = await isPremium();
     setPremium(result);
@@ -33,6 +34,7 @@ export function PremiumProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
+    if (FORCE_PREMIUM) return;
     refresh();
 
     const sub = AppState.addEventListener('change', (state: AppStateStatus) => {
