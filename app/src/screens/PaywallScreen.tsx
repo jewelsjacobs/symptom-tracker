@@ -265,7 +265,7 @@ export default function PaywallScreen() {
           {/* Footer links */}
           <View style={styles.footer}>
             <Pressable
-              onPress={() => Linking.openURL('https://example.com/terms')}
+              onPress={() => Linking.openURL('https://ebb.bio/terms')}
               disabled={busy}
             >
               <EbbText type="footnote" style={styles.footerLink}>
@@ -276,7 +276,7 @@ export default function PaywallScreen() {
               ·
             </EbbText>
             <Pressable
-              onPress={() => Linking.openURL('https://example.com/privacy')}
+              onPress={() => Linking.openURL('https://ebb.bio/privacy')}
               disabled={busy}
             >
               <EbbText type="footnote" style={styles.footerLink}>
