@@ -334,7 +334,7 @@ const styles = StyleSheet.create({
   scroll: {
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.xxl,
-    paddingBottom: spacing.lg,
+    paddingBottom: spacing.xxl + 20,
     alignItems: 'center',
   },
   appIcon: {
