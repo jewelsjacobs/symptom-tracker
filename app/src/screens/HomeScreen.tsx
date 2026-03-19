@@ -107,7 +107,7 @@ export default function HomeScreen() {
     <GradientBackground>
       <View style={{ flex: 1 }} collapsable={false}>
       <ScrollView
-        contentContainerStyle={[styles.content, { paddingTop: insets.top + spacing.md, paddingBottom: 120 }]}
+        contentContainerStyle={[styles.content, { paddingTop: insets.top + spacing.md, paddingBottom: insets.bottom + 100 }]}
         showsVerticalScrollIndicator={false}
         scrollIndicatorInsets={{ bottom: 0 }}
         automaticallyAdjustsScrollIndicatorInsets={false}

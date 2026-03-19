@@ -7,6 +7,7 @@ import {
   ScrollView,
   Alert,
   Platform,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
@@ -351,6 +352,10 @@ export default function OnboardingScreen() {
 
   return (
     <CreamBackground>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
       <SafeAreaView style={styles.container}>
         {renderProgressDots()}
 
@@ -388,6 +393,7 @@ export default function OnboardingScreen() {
           )}
         </View>
       </SafeAreaView>
+      </KeyboardAvoidingView>
     </CreamBackground>
   );
 }
