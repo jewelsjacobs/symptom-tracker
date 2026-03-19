@@ -132,6 +132,12 @@ export default function PaywallScreen() {
     }
   }
 
+  // Pull intro offer trial period from RevenueCat if available
+  const introOffer = selectedPkg?.product.introPrice;
+  const trialLabel: string | null = introOffer
+    ? `${introOffer.periodNumberOfUnits}-${introOffer.periodUnit.toLowerCase()} free trial`
+    : '7-day free trial';
+
   const busy = purchasing || restoring;
 
   return (
@@ -167,6 +173,13 @@ export default function PaywallScreen() {
           <EbbText type="body" style={styles.subtitle}>
             Track without limits. Understand your patterns.
           </EbbText>
+
+          {/* Free trial callout */}
+          <View style={styles.trialBanner}>
+            <EbbText type="subheadline" style={styles.trialBannerText}>
+              ✦ {trialLabel} — then cancel anytime
+            </EbbText>
+          </View>
 
           {/* Feature list */}
           <GlassCard variant="cream" style={styles.featureCard}>
@@ -339,6 +352,20 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     textAlign: 'center',
     marginBottom: spacing.lg,
+  },
+  trialBanner: {
+    backgroundColor: colors.primary + '1A', // 10% opacity coral
+    borderRadius: radius.md,
+    paddingVertical: 8,
+    paddingHorizontal: spacing.md,
+    marginBottom: spacing.lg,
+    alignSelf: 'stretch',
+    alignItems: 'center',
+  },
+  trialBannerText: {
+    color: colors.primary,
+    fontWeight: '600',
+    textAlign: 'center',
   },
   featureCard: {
     width: '100%',
