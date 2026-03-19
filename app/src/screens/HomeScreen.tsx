@@ -225,25 +225,30 @@ export default function HomeScreen() {
               </View>
             </View>
 
-            {/* CTA */}
-            {!loggedToday ? (
-              <Pressable
-                onPress={() => router.push('/home/daily-log')}
-                style={({ pressed }) => [
-                  styles.ctaButton,
-                  pressed && styles.ctaButtonPressed,
-                ]}
-              >
-                <EbbText type="button" style={styles.ctaButtonText}>Log Today's Symptoms</EbbText>
-              </Pressable>
-            ) : (
-              <View style={styles.loggedPill}>
-                <EbbText type="button" style={styles.loggedText}>Logged</EbbText>
-              </View>
-            )}
           </>
         )}
       </ScrollView>
+
+      {/* CTA pinned above tab bar */}
+      {hasSymptoms && (
+        <View style={[styles.ctaContainer, { paddingBottom: insets.bottom + 57 }]}>
+          {!loggedToday ? (
+            <Pressable
+              onPress={() => router.push('/home/daily-log')}
+              style={({ pressed }) => [
+                styles.ctaButton,
+                pressed && styles.ctaButtonPressed,
+              ]}
+            >
+              <EbbText type="button" style={styles.ctaButtonText}>Log Today's Symptoms</EbbText>
+            </Pressable>
+          ) : (
+            <View style={styles.loggedPill}>
+              <EbbText type="button" style={styles.loggedText}>Logged</EbbText>
+            </View>
+          )}
+        </View>
+      )}
       </View>
     </GradientBackground>
   );
@@ -379,7 +384,11 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
 
-  // CTA — solid coral button, white text
+  // CTA — pinned above tab bar
+  ctaContainer: {
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.sm,
+  },
   ctaButton: {
     backgroundColor: '#E8725A',
     borderRadius: 18,
