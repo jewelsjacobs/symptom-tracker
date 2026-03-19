@@ -7,10 +7,10 @@ import {
   TextInput,
   Alert,
   Platform,
-  Modal,
   ActivityIndicator,
   Linking,
 } from 'react-native';
+
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { BlurView } from 'expo-blur';
@@ -22,8 +22,7 @@ import { colors, spacing, radius, getSymptomColor } from '../theme';
 import { loadSettings, saveSettings, loadAllLogs } from '../storage';
 import { AppSettings, Symptom } from '../types';
 import { requestNotificationPermission, scheduleReminder, cancelReminder } from '../notifications';
-import { signIn, signUp, signOut, getUser } from '../supabase/auth';
-import { pushToCloud, pullFromCloud } from '../supabase/sync';
+
 import { usePremium } from '../purchases/usePremium';
 import { restorePurchases } from '../purchases';
 import { exportPdf } from '../export/generatePdf';
@@ -75,12 +74,7 @@ export default function SettingsScreen() {
   const { premium, loading: premiumLoading, refresh: refreshPremium } = usePremium();
   const [exporting, setExporting] = useState(false);
 
-  const [user, setUser] = useState<{ email?: string } | null>(null);
-  const [showAuthModal, setShowAuthModal] = useState(false);
-  const [authEmail, setAuthEmail] = useState('');
-  const [authPassword, setAuthPassword] = useState('');
-  const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
-  const [authLoading, setAuthLoading] = useState(false);
+
 
   useFocusEffect(
     useCallback(() => {
@@ -88,8 +82,6 @@ export default function SettingsScreen() {
         const s = await loadSettings();
         setSettings(s);
         setPickerDate(parseReminderTime(s.reminderTime));
-        const u = await getUser();
-        setUser(u);
       })();
     }, [])
   );
@@ -191,36 +183,6 @@ export default function SettingsScreen() {
       return;
     }
     setShowTimePicker(true);
-  }
-
-  // -- Auth --
-
-  async function handleAuth() {
-    if (!authEmail || !authPassword) return;
-    setAuthLoading(true);
-    try {
-      const u = authMode === 'signup'
-        ? await signUp(authEmail, authPassword)
-        : await signIn(authEmail, authPassword);
-      setUser(u);
-      await persist({ ...settings!, accountEmail: authEmail });
-      setShowAuthModal(false);
-      setAuthEmail('');
-      setAuthPassword('');
-      const logs = await loadAllLogs();
-      await pushToCloud(settings!, logs);
-      await pullFromCloud();
-    } catch (e: unknown) {
-      Alert.alert('Error', e instanceof Error ? e.message : 'Authentication failed');
-    } finally {
-      setAuthLoading(false);
-    }
-  }
-
-  async function handleSignOut() {
-    await signOut();
-    setUser(null);
-    await persist({ ...settings!, accountEmail: null });
   }
 
   // -- Export --
@@ -534,62 +496,7 @@ export default function SettingsScreen() {
           <View style={{ height: 100 }} />
         </ScrollView>
 
-        {/* Auth Modal */}
-        <Modal visible={showAuthModal} animationType="slide" transparent onRequestClose={() => setShowAuthModal(false)}>
-          <Pressable style={styles.modalOverlay} onPress={() => setShowAuthModal(false)}>
-            <Pressable style={styles.modalSheet} onPress={() => {}}>
-              <BlurView intensity={80} tint="light" style={styles.modalBlur}>
-                <View style={styles.modalInner}>
-                  <View style={styles.handleBar} />
-                  <EbbText type="largeTitle" style={styles.modalTitle}>
-                    {authMode === 'signin' ? 'Sign In' : 'Create Account'}
-                  </EbbText>
 
-                  <TextInput
-                    allowFontScaling={false}
-                    style={styles.authInput}
-                    value={authEmail}
-                    onChangeText={setAuthEmail}
-                    placeholder="Email"
-                    placeholderTextColor={colors.textMuted}
-                    autoCapitalize="none"
-                    keyboardType="email-address"
-                    textContentType="emailAddress"
-                  />
-                  <TextInput
-                    allowFontScaling={false}
-                    style={styles.authInput}
-                    value={authPassword}
-                    onChangeText={setAuthPassword}
-                    placeholder="Password"
-                    placeholderTextColor={colors.textMuted}
-                    secureTextEntry
-                    textContentType="password"
-                  />
-
-                  <CoralButton
-                    label={authMode === 'signin' ? 'Sign In' : 'Create Account'}
-                    onPress={handleAuth}
-                    loading={authLoading}
-                    disabled={authLoading}
-                    style={styles.authSubmitBtn}
-                  />
-
-                  <Pressable
-                    style={styles.authToggle}
-                    onPress={() => setAuthMode(authMode === 'signin' ? 'signup' : 'signin')}
-                  >
-                    <EbbText type="footnote" style={styles.authToggleText}>
-                      {authMode === 'signin'
-                        ? "Don't have an account? Sign up"
-                        : 'Already have an account? Sign in'}
-                    </EbbText>
-                  </Pressable>
-                </View>
-              </BlurView>
-            </Pressable>
-          </Pressable>
-        </Modal>
       </SafeAreaView>
     </CreamBackground>
   );
