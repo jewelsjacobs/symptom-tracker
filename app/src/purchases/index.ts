@@ -1,4 +1,4 @@
-import Purchases, { LOG_LEVEL, PurchasesPackage } from 'react-native-purchases';
+import Purchases, { LOG_LEVEL, PurchasesPackage, STOREKIT_VERSION } from 'react-native-purchases';
 import { Platform } from 'react-native';
 
 const REVENUECAT_API_KEY_IOS = process.env.EXPO_PUBLIC_REVENUECAT_IOS_API_KEY ?? '';
@@ -7,7 +7,7 @@ const PREMIUM_ENTITLEMENT_ID = 'premium';
 export function configurePurchases() {
   if (Platform.OS === 'ios') {
     Purchases.setLogLevel(LOG_LEVEL.WARN);
-    Purchases.configure({ apiKey: REVENUECAT_API_KEY_IOS });
+    Purchases.configure({ apiKey: REVENUECAT_API_KEY_IOS, storeKitVersion: STOREKIT_VERSION.STOREKIT_2 });
   }
 }
 
